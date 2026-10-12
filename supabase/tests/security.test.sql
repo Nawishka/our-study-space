@@ -1,0 +1,18 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set search_path=public,extensions;
+select plan(12);
+select has_table('public','task_days','Daily history exists');
+select has_index('public','challenges','one_active_challenge','Only one active challenge');
+select has_function('public','complete_task',array['uuid','boolean'],'Atomic task mutation');
+select has_function('public','review_test',array['uuid','boolean','text'],'Host review RPC');
+select ok((select not public from storage.buckets where id='test-proofs'),'Proof bucket is private');
+select ok((select file_size_limit=10485760 from storage.buckets where id='test-proofs'),'10 MB bucket limit');
+select ok(not has_table_privilege('authenticated','public.profiles','UPDATE'),'Client cannot edit roles');
+select ok(not has_table_privilege('authenticated','public.tasks','INSERT'),'Client cannot forge owner fields');
+select ok(not has_table_privilege('authenticated','public.tests','UPDATE'),'Client cannot forge approval fields');
+select ok(not has_function_privilege('anon','public.catch_up()','EXECUTE'),'Anonymous cannot run operations');
+select ok(not has_function_privilege('authenticated','private.maintain()','EXECUTE'),'Internal maintenance is not callable');
+select ok(exists(select 1 from cron.job where jobname='study-midnight' and schedule='30 18 * * *'),'Colombo midnight cron is scheduled');
+select * from finish();
+rollback;
