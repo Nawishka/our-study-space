@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { demoData } from "./demo";
 import { loadData, rpc, supabase } from "./service";
 import { studyDate, type Data, type Profile } from "./domain";
+import { planReceipt, useFeedback } from "./Feedback";
 export function useStudy(profile: Profile | null, demo: boolean) {
+  const feedback = useFeedback();
   const [data, setData] = useState<Data | null>(demo ? demoData : null);
   const [loadedFor, setLoadedFor] = useState<string | null>(null);
   const identity = useRef(profile?.id);
@@ -113,6 +115,26 @@ export function useStudy(profile: Profile | null, demo: boolean) {
           "This is a preview. Connect Supabase to save tests, plans and settings.",
         );
       setStatus(demo ? "Demo · changes stay in this tab" : "Saved");
+      if (!demo && profile && identity.current === profile.id) {
+        if (name === "complete_task" && args.done === true)
+          feedback.confirm(
+            `task:${profile.id}:${args.task_id}:${studyDate()}`,
+            "task",
+            "Task completed. A little step forward.",
+          );
+        if (name === "save_task") {
+          // Feedback failure must never turn a confirmed save into a rollback.
+          try {
+            feedback.confirm(
+              await planReceipt(profile.id, args),
+              "plan",
+              "Future plan saved.",
+            );
+          } catch {
+            /* Saved status remains visible. */
+          }
+        }
+      }
       await refresh();
     } catch (e) {
       if (optimistic) setData(previous);

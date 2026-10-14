@@ -1,5 +1,7 @@
 # Our Study Space — finish setup and go online
 
+**14 October update:** for the new challenge scoring and optional feedback, follow [the upgrade guide](docs/SCORING-AND-FEEDBACK-UPDATE.md). Apply only `202610140004_scoring_v2.sql` to your existing database. Keep your users, roles and earlier migrations.
+
 This is the short guide for **your existing installation**. You have reported that the database migrations, midnight Cron and three role mappings are configured. **Keep them. Do not recreate users or rerun the initial SQL.**
 
 The app has exactly three pages: Daily Focus, Academic Growth and Our Journey. Login is **host**, **melan** or **shashi**, plus a password. No email field, verification code, signup or SMTP is needed. Supabase validates passwords; protected database roles determine permissions. The `view=host` bookmark cannot give a student host access.

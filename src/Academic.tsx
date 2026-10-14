@@ -35,6 +35,7 @@ import {
 } from "./domain";
 import { Empty, Identity, PageHeading } from "./ui";
 import { proofLinks, rpc, supabase } from "./service";
+import { useFeedback } from "./Feedback";
 export type Mutate = (
   name: string,
   args: Record<string, unknown>,
@@ -59,7 +60,7 @@ function FilePreview({ file }: { file: File }) {
     </div>
   );
 }
-function TestForm({
+export function TestForm({
   data,
   profile,
   record,
@@ -74,6 +75,8 @@ function TestForm({
   refresh: () => Promise<void>;
   demo: boolean;
 }) {
+  const feedback = useFeedback();
+  const submitting = useRef(false);
   const subjects = data.subjects.filter((s) => s.student_role === profile.role);
   const [subject, setSubject] = useState(
     record?.subject_code ?? subjects[0]?.code ?? "",
@@ -90,6 +93,8 @@ function TestForm({
   const uploaded = useRef(new Map<File, string>());
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setError("");
     setBusy(true);
     try {
@@ -142,6 +147,11 @@ function TestForm({
       }
       setPhase("Submitting for approval…");
       await rpc("submit_test", { test_id: id.current });
+      feedback.confirm(
+        `submission:${profile.id}:${id.current}`,
+        "submission",
+        "Submitted — awaiting approval.",
+      );
       await refresh();
       close();
     } catch (e) {
@@ -150,6 +160,7 @@ function TestForm({
           " Your draft and any uploaded files are retained; retry safely.",
       );
     } finally {
+      submitting.current = false;
       setBusy(false);
       setPhase("");
     }
@@ -173,6 +184,12 @@ function TestForm({
       </div>
       <p className="tiny muted">
         Verified effort deserves a place here. Marks appear after host approval.
+      </p>
+      <p className="notice tiny">
+        A qualifying test is a full paper or an agreed comparable timed section.
+        Add all pages of that paper to one test. Duplicate uploads or fragments
+        of the same paper must not be submitted as separate tests. Host approval
+        is the quality check; submitting earns no points yet.
       </p>
       <form onSubmit={submit}>
         <div className="form-grid">
@@ -479,7 +496,7 @@ function AcademicStudent({
         })}
       </div>
       <div className="chart-header">
-        <h3>A little better, every time</h3>
+        <h3>Your approved papers over time</h3>
         <span className="tiny muted">{selected} · approved marks</span>
       </div>
       <div
@@ -624,6 +641,7 @@ function Planner({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const retryId = useRef(crypto.randomUUID());
+  const submitting = useRef(false);
   if (!owner) return null;
   const editable = canEdit(profile, owner.id);
   const tasks = data.tasks.filter(
@@ -632,6 +650,8 @@ function Planner({
   );
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(true);
     setError("");
     try {
@@ -647,6 +667,7 @@ function Planner({
     } catch (e) {
       setError(e instanceof Error ? e.message : "Plan was not saved");
     } finally {
+      submitting.current = false;
       setBusy(false);
     }
   };
@@ -796,6 +817,12 @@ export default function Academic({
             <h2>Host review desk</h2>
             <span className="pill">{pending.length} pending</span>
           </div>
+          <p className="notice tiny">
+            Approve a full paper or an agreed comparable timed section. Check
+            the proof and journal for duplicates; pages or fragments of the same
+            paper count as one test. Extra complete papers still count in
+            history and averages after practice points reach their cap.
+          </p>
           {pending.length ? (
             pending.map((t) => (
               <ReviewItem

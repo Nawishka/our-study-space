@@ -38,6 +38,10 @@ export interface TestRecord {
   challenge_id: string | null;
 }
 export interface Settings {
+  rules_version?: number;
+  practice_weight?: number;
+  performance_weight?: number;
+  practice_target?: number;
   exam_date: string | null;
   task_weight: number;
   test_weight: number;
@@ -46,6 +50,9 @@ export interface Settings {
   minimum_on_time: number;
 }
 export interface Score {
+  rules_version?: number;
+  practice_score?: number;
+  performance_score?: number;
   owner_id: string;
   total_tasks: number;
   on_time_tasks: number;

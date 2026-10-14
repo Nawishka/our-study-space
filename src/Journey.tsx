@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type FormEvent } from "react";
+import { useRef, useState, type CSSProperties, type FormEvent } from "react";
 import {
   Check,
   Clapperboard,
@@ -16,10 +16,14 @@ import {
   type Data,
   type Profile,
   type Settings,
+  type Score,
   type Student,
 } from "./domain";
 import { Empty, Identity, PageHeading } from "./ui";
 import type { Mutate } from "./Academic";
+import { nextStep, previewScore, revisedRules, rulesError } from "./scoring";
+import { rpc } from "./service";
+import { useFeedback } from "./Feedback";
 export function Character({ student }: { student: Student }) {
   return (
     <svg
@@ -91,22 +95,46 @@ export function Character({ student }: { student: Student }) {
     </svg>
   );
 }
-function HostSettings({ data, mutate }: { data: Data; mutate: Mutate }) {
-  const [values, setValues] = useState<Settings>(data.settings);
+function HostSettings({
+  data,
+  mutate,
+  demo,
+}: {
+  data: Data;
+  mutate: Mutate;
+  demo: boolean;
+}) {
+  const [values, setValues] = useState<Settings>(() =>
+    revisedRules(data.settings),
+  );
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const saving = useRef(false);
+  const [preview, setPreview] = useState<{
+    rules: Settings;
+    students: Record<Student, Score>;
+  } | null>(null);
+  const validation = rulesError(values);
+  const installed = demo || data.settings.rules_version === 2;
+  const args = () => ({
+    task_points: Number(values.task_weight),
+    practice_points: Number(values.practice_weight),
+    performance_points: Number(values.performance_weight),
+    papers_per_subject: Number(values.practice_target),
+    target: Number(values.target_score),
+    study_days: Number(values.minimum_days),
+    on_time: Number(values.minimum_on_time),
+  });
   const save = async (e: FormEvent) => {
     e.preventDefault();
+    if (saving.current || validation || !installed) return;
+    saving.current = true;
     setBusy(true);
     setMessage("");
     try {
-      await mutate("update_settings", {
+      await mutate("update_scoring_settings", {
         exam: values.exam_date || null,
-        task_points: Number(values.task_weight),
-        test_points: Number(values.test_weight),
-        target: Number(values.target_score),
-        study_days: Number(values.minimum_days),
-        on_time: Number(values.minimum_on_time),
+        ...args(),
       });
       setMessage(
         "Saved. Exam date applies now; scoring rules apply to the next challenge.",
@@ -114,6 +142,7 @@ function HostSettings({ data, mutate }: { data: Data; mutate: Mutate }) {
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Could not save settings");
     } finally {
+      saving.current = false;
       setBusy(false);
     }
   };
@@ -128,6 +157,13 @@ function HostSettings({ data, mutate }: { data: Data; mutate: Mutate }) {
           Scoring rules are frozen when a challenge starts. Changes here apply
           to the next challenge, keeping the current goalposts steady.
         </p>
+        {!installed && (
+          <p role="alert" className="notice">
+            Scoring update pending. Apply the new 202610140004_scoring_v2.sql
+            migration once to enable these controls. Current challenge scores
+            still use their saved rules.
+          </p>
+        )}
         <div className="form-grid">
           <label>
             Shared A/L exam starting date
@@ -142,7 +178,14 @@ function HostSettings({ data, mutate }: { data: Data; mutate: Mutate }) {
           {(
             [
               ["task_weight", "Task points", 0, 100],
-              ["test_weight", "Test points", 0, 100],
+              ["practice_weight", "Practice points", 0, 100],
+              ["performance_weight", "Performance points", 0, 100],
+              [
+                "practice_target",
+                "Approved papers per subject for full practice points",
+                1,
+                100,
+              ],
               ["target_score", "Qualifying score", 0, 100],
               ["minimum_days", "Minimum active days", 1, 365],
               ["minimum_on_time", "Minimum on-time percentage", 0, 100],
@@ -154,23 +197,110 @@ function HostSettings({ data, mutate }: { data: Data; mutate: Mutate }) {
                 type="number"
                 min={min}
                 max={max}
-                step={key === "minimum_days" ? 1 : 0.1}
+                step={
+                  key === "minimum_days" || key === "practice_target" ? 1 : 0.1
+                }
                 required
                 value={values[key]}
-                onChange={(e) =>
-                  setValues({ ...values, [key]: Number(e.target.value) })
-                }
+                onChange={(e) => {
+                  setValues({ ...values, [key]: Number(e.target.value) });
+                  setPreview(null);
+                }}
               />
             </label>
           ))}
         </div>
         <p className="tiny muted">
-          Task points + test points must total 100. All three subjects are
-          always required.
+          Task + practice + performance points must total 100. Each subject
+          receives one third of the practice and performance weights. The
+          practice target is not an eligibility gate.
         </p>
-        <button className="primary-button" disabled={busy}>
-          Save settings
-        </button>
+        {validation && (
+          <p role="alert" className="error">
+            {validation}
+          </p>
+        )}
+        <div className="button-row">
+          <button
+            className="primary-button"
+            disabled={busy || !!validation || !installed}
+          >
+            Save settings
+          </button>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={busy || !!validation || !installed}
+            onClick={async () => {
+              if (saving.current) return;
+              saving.current = true;
+              setBusy(true);
+              setMessage("");
+              try {
+                if (demo)
+                  setPreview({
+                    rules: values,
+                    students: Object.fromEntries(
+                      STUDENTS.map((s) => [
+                        s,
+                        previewScore(
+                          data.scores.students?.[s] ?? emptyScore(s),
+                          values,
+                          data.subjects.filter(
+                            (subject) => subject.student_role === s,
+                          ),
+                        ),
+                      ]),
+                    ) as Record<Student, Score>,
+                  });
+                else setPreview(await rpc("preview_challenge_scores", args()));
+              } catch (e) {
+                setMessage(
+                  e instanceof Error ? e.message : "Could not load preview",
+                );
+              } finally {
+                saving.current = false;
+                setBusy(false);
+              }
+            }}
+          >
+            Preview new calculation
+          </button>
+        </div>
+        {preview && (
+          <section
+            className="score-preview"
+            aria-label="Proposed scoring preview"
+          >
+            <h3>
+              {demo
+                ? "Sample calculation preview"
+                : "Current work under the proposed rules"}
+            </h3>
+            <p className="tiny muted">
+              Preview only · not earned scores · no data changed. A new
+              challenge begins at zero and does not reuse this work.
+            </p>
+            {STUDENTS.map((s) => {
+              const score = preview.students[s];
+              return (
+                <div key={s}>
+                  <strong>
+                    {NAMES[s]} · {score.score.toFixed(1)} / 100
+                  </strong>
+                  <p className="tiny">
+                    Tasks {score.task_score.toFixed(1)} /{" "}
+                    {preview.rules.task_weight} · Practice{" "}
+                    {score.practice_score?.toFixed(1)} /{" "}
+                    {preview.rules.practice_weight} · Performance{" "}
+                    {score.performance_score?.toFixed(1)} /{" "}
+                    {preview.rules.performance_weight}
+                  </p>
+                </div>
+              );
+            })}
+          </section>
+        )}
         {message && (
           <p role="status" className="notice">
             {message}
@@ -202,11 +332,15 @@ export default function Journey({
   data,
   profile,
   mutate,
+  demo = false,
 }: {
   data: Data;
   profile: Profile;
   mutate: Mutate;
+  demo?: boolean;
 }) {
+  const feedback = useFeedback();
+  const [celebratingId, setCelebratingId] = useState("");
   const challenge = data.scores.challenge;
   const rules = challenge?.rules ?? data.settings;
   const elapsed = challenge
@@ -241,7 +375,12 @@ export default function Journey({
         }
       />
       {celebrate && (
-        <section className="celebration" role="status">
+        <section
+          className={
+            "celebration" + (celebratingId === reward.id ? " celebrating" : "")
+          }
+          role="status"
+        >
           <Sparkles size={30} />
           <h2>Movie Date Unlocked!</h2>
           <p>
@@ -252,6 +391,21 @@ export default function Journey({
             <Character student="melan" />
             <Character student="shashi" />
           </div>
+          <button
+            className="secondary-button"
+            onClick={() => {
+              if (
+                feedback.confirm(
+                  `reward:${reward.id}`,
+                  "reward",
+                  "Movie Date Unlocked! Your achievement is saved.",
+                )
+              )
+                setCelebratingId(reward.id);
+            }}
+          >
+            Celebrate
+          </button>
           <button className="primary-button" onClick={closeCelebration}>
             Here’s to the next chapter
           </button>
@@ -294,8 +448,8 @@ export default function Journey({
           <span className="scene-flower flower-three">✦</span>
         </div>
         <p className="scene-caption">
-          Every honest effort brings you a little closer. Both students must
-          meet every requirement.
+          Challenge scores reflect the saved rules and can rise or fall. Both
+          students must meet every requirement.
         </p>
       </section>
       <div className="student-grid">
@@ -303,6 +457,14 @@ export default function Journey({
           const owner = data.profiles.find((p) => p.role === s);
           const score =
             data.scores.students?.[s] ?? emptyScore(owner?.id ?? "");
+          const subjects = data.subjects.filter((x) => x.student_role === s);
+          const remaining = data.tasks.filter(
+            (t) =>
+              t.owner_id === owner?.id &&
+              !t.cancelled_at &&
+              !t.completed_at &&
+              t.original_due <= studyDate(),
+          ).length;
           const requirements = [
             {
               label: `Score of ${rules.target_score}+`,
@@ -328,10 +490,7 @@ export default function Journey({
           return (
             <section className={"card score-card " + s} key={s}>
               <div className="card-header">
-                <Identity
-                  student={s}
-                  subtitle="Your effort, honestly measured."
-                />
+                <Identity student={s} subtitle="Challenge score" />
                 <div className="score-total">
                   {score.score.toFixed(1)}
                   <span>/ 100</span>
@@ -362,6 +521,15 @@ export default function Journey({
                         <span className="tiny muted">
                           {stats?.count ?? 0} approved
                         </span>
+                        {rules.rules_version === 2 && (
+                          <span className="tiny muted">
+                            {Math.min(
+                              stats?.count ?? 0,
+                              rules.practice_target!,
+                            )}{" "}
+                            / {rules.practice_target} practice target
+                          </span>
+                        )}
                       </div>
                     );
                   })}
@@ -374,23 +542,66 @@ export default function Journey({
                     <small> / {rules.task_weight} pts</small>
                   </strong>
                   <p>
-                    {score.on_time_tasks} of {score.total_tasks} original
-                    obligations
+                    {score.on_time_tasks} / {score.total_tasks} original
+                    obligations completed on time ·{" "}
+                    {score.on_time_percent.toFixed(1)}%
                   </p>
                 </div>
-                <div>
-                  <span>Approved tests</span>
-                  <strong>
-                    {score.test_score.toFixed(1)}
-                    <small> / {rules.test_weight} pts</small>
-                  </strong>
-                  <p>
-                    {score.subject_coverage
-                      ? `${score.test_average.toFixed(1)}% average`
-                      : "No eligible approved tests yet"}
-                  </p>
-                </div>
+                {rules.rules_version === 2 ? (
+                  <>
+                    <div>
+                      <span>Approved test practice</span>
+                      <strong>
+                        {(score.practice_score ?? 0).toFixed(1)}
+                        <small> / {rules.practice_weight} pts</small>
+                      </strong>
+                      <p>
+                        {subjects.reduce(
+                          (sum, subject) =>
+                            sum +
+                            Math.min(
+                              score.subjects[subject.code]?.count ?? 0,
+                              rules.practice_target!,
+                            ),
+                          0,
+                        )}{" "}
+                        / {3 * rules.practice_target!} practice slots · capped
+                        per subject
+                      </p>
+                    </div>
+                    <div>
+                      <span>Approved test performance</span>
+                      <strong>
+                        {(score.performance_score ?? 0).toFixed(1)}
+                        <small> / {rules.performance_weight} pts</small>
+                      </strong>
+                      <p>
+                        Each subject average contributes up to{" "}
+                        {(rules.performance_weight! / 3).toFixed(1)} points.
+                        Missing subjects contribute zero.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <span>Approved tests</span>
+                    <strong>
+                      {score.test_score.toFixed(1)}
+                      <small> / {rules.test_weight} pts</small>
+                    </strong>
+                    <p>
+                      {score.subject_coverage
+                        ? `${score.test_average.toFixed(1)}% average`
+                        : "No eligible approved tests yet"}
+                    </p>
+                  </div>
+                )}
               </div>
+              <p className="next-step">
+                <strong>Your next step</strong>
+                <br />
+                {nextStep(score, rules, subjects, remaining)}
+              </p>
               <h3 className="list-heading">The way to movie night</h3>
               <ul className="requirements">
                 {requirements.map((r) => (
@@ -417,7 +628,16 @@ export default function Journey({
         })}
       </div>
       <details className="card scoring-notes">
-        <summary>How your journey is measured</summary>
+        <summary>
+          How your challenge score works · rules v{rules.rules_version ?? 1}
+        </summary>
+        {rules.rules_version !== 2 && (
+          <p className="notice">
+            This challenge keeps its original task/test formula. Practice and
+            equal-subject performance points begin with the next challenge.
+            Earned scores and past rewards stay unchanged.
+          </p>
+        )}
         <p>
           An active study day is a Colombo calendar day with at least one
           original task completed on its original due date. Task points are{" "}
@@ -425,18 +645,44 @@ export default function Journey({
           obligations due in this challenge. Future plans enter the denominator
           when their day arrives. Carryovers never add another obligation.
         </p>
+        {rules.rules_version === 2 ? (
+          <p>
+            Each subject earns {rules.practice_weight! / 3} × min(approved
+            eligible papers ÷ {rules.practice_target}, 1) practice points and{" "}
+            {rules.performance_weight! / 3} × its average normalized percentage
+            ÷ 100 performance points. The {rules.practice_target}-paper practice
+            target is not an additional eligibility requirement: one approved
+            paper in each subject is still the coverage gate. All extra papers
+            stay in history, graphs and averages after practice points reach
+            their cap. Subjects have equal weight; missing subjects contribute
+            zero.
+          </p>
+        ) : (
+          <p>
+            Test points are {rules.test_weight} × average approved eligible
+            percentage ÷ 100. A test joins the active challenge when its draft
+            is first saved, provided its test date is on or after the
+            challenge’s start date. Later corrections keep that allocation.
+            Approvals after a challenge closes stay in your academic history and
+            never earn points again.
+          </p>
+        )}
         <p>
-          Test points are {rules.test_weight} × average approved eligible
-          percentage ÷ 100. A test joins the active challenge when its draft is
-          first saved, provided its test date is on or after the challenge’s
-          start date. Later corrections keep that allocation. Approvals after a
-          challenge closes stay in your academic history and never earn points
-          again.
+          A qualifying test is a full paper or an agreed comparable timed
+          section, checked by Host approval. Duplicate uploads and fragments of
+          the same paper are one test, not extra practice. Pending/rejected
+          papers earn no points. A test is allocated once when first saved;
+          corrections retain its identity and challenge. Later approval cannot
+          move an old test into a new challenge.
         </p>
         <p>
           Missing data scores zero. Qualification uses the full-precision score;
-          displayed scores round to one decimal. Scores can fall when due tasks
-          are missed. There is no 30-day deadline. When you both qualify, the
+          displayed scores round to one decimal. Rounded components may add up
+          to a slightly different displayed total; the server sums
+          full-precision values before rounding for display. Averages can
+          decrease after a lower mark, and task ratios can decrease when due
+          tasks are missed. This is a challenge score, not a measure of who
+          worked harder. There is no 30-day deadline. When you both qualify, the
           server archives the results, issues one reward, and starts the next
           challenge at zero. Completed archived tasks cannot be undone.
         </p>
@@ -472,6 +718,10 @@ export default function Journey({
                     Melan {archive?.snapshot?.melan.score.toFixed(1)} · Shashi{" "}
                     {archive?.snapshot?.shashi.score.toFixed(1)}
                   </p>
+                  <p className="tiny muted">
+                    Saved rules v{archive?.rules.rules_version ?? 1} · archived
+                    scores remain unchanged
+                  </p>
                   <span className="badge approved">
                     {r.redeemed_at
                       ? "Enjoyed on " + formatDate(r.redeemed_at)
@@ -495,7 +745,9 @@ export default function Journey({
           })
         )}
       </section>
-      {profile.role === "host" && <HostSettings data={data} mutate={mutate} />}
+      {profile.role === "host" && (
+        <HostSettings data={data} mutate={mutate} demo={demo} />
+      )}
     </>
   );
 }

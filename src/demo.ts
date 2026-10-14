@@ -1,7 +1,12 @@
 import { addDays, emptyScore, studyDate, type Data } from "./domain";
+import { previewScore } from "./scoring";
 export function demoData(): Data {
   const today = studyDate();
   const settings = {
+    rules_version: 2,
+    practice_weight: 15,
+    performance_weight: 15,
+    practice_target: 2,
     exam_date: null,
     task_weight: 70,
     test_weight: 30,
@@ -75,7 +80,7 @@ export function demoData(): Data {
     rules: settings,
     snapshot: null,
   };
-  return {
+  const data: Data = {
     profiles,
     subjects,
     tasks,
@@ -128,4 +133,12 @@ export function demoData(): Data {
       },
     },
   };
+  for (const student of ["melan", "shashi"] as const) {
+    data.scores.students![student] = previewScore(
+      data.scores.students![student],
+      settings,
+      subjects.filter((s) => s.student_role === student),
+    );
+  }
+  return data;
 }

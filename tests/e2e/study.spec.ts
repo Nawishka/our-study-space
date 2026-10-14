@@ -1,4 +1,54 @@
 import { expect, test } from "@playwright/test";
+test("revised scoring preview, independent preferences and reduced motion fit the screen", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./?demo=1#/journey");
+  await expect(
+    page.getByRole("button", { name: "Sounds off" }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator("html")).toHaveAttribute("data-motion", "off");
+  await expect(page.getByText("Challenge score", { exact: true })).toHaveCount(
+    2,
+  );
+  await expect(
+    page.getByText("Approved test practice", { exact: true }),
+  ).toHaveCount(2);
+  await expect(
+    page.getByText("Approved test performance", { exact: true }),
+  ).toHaveCount(2);
+  await expect(page.getByText("Your next step", { exact: true })).toHaveCount(
+    2,
+  );
+  await page.getByRole("button", { name: "Animations on" }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Animations off" }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("button", { name: "Sounds off" })).toBeVisible();
+  await page.getByLabel("Demo role").selectOption("host");
+  await page
+    .getByText("Host settings & challenge controls", { exact: true })
+    .click();
+  await page.getByRole("button", { name: "Preview new calculation" }).click();
+  await expect(
+    page.getByRole("region", { name: "Proposed scoring preview" }),
+  ).toBeVisible();
+  await page.getByLabel("Practice points", { exact: true }).fill("16");
+  await expect(page.getByRole("alert")).toContainText("total 100");
+  await expect(
+    page.getByRole("button", { name: "Save settings", exact: true }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-scoring-v2.png`,
+    fullPage: true,
+  });
+});
 test("three pages fit, navigation survives refresh, demo is explicit", async ({
   page,
 }) => {

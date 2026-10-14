@@ -7,6 +7,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Auth from "./Auth";
+import { FeedbackControls } from "./Feedback";
 const Academic = lazy(() => import("./Academic"));
 const Journey = lazy(() => import("./Journey"));
 import { Brand, Clock, Daily } from "./ui";
@@ -196,6 +197,7 @@ export default function App() {
           {study.status}
         </span>
       </div>
+      <FeedbackControls />
       <main id="main-content" className="main-content">
         {page !== "journey" &&
           latestReward &&
@@ -244,6 +246,7 @@ export default function App() {
                 data={study.data}
                 profile={profile}
                 mutate={study.mutate}
+                demo={demo}
               />
             )
           ) : (

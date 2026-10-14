@@ -1,10 +1,12 @@
 # Our Study Space
 
+**Latest update:** [Scoring v2 and optional sound/motion feedback](docs/SCORING-AND-FEEDBACK-UPDATE.md). Existing installations apply only the new `202610140004_scoring_v2.sql` migration. Active challenges keep their old formula; new challenges freeze the configurable 70 task / 15 practice / 15 performance rules.
+
 **For this existing installation, follow [START-HERE.md](START-HERE.md).** It is the short path: connect the two public Supabase values, sign in, then deploy through GitHub Actions. The sections below are the full reference, including fresh-install instructions that you do not need to repeat.
 
 A private study studio for Melan, Shashi and a separate host. Three pages: **Daily Focus**, **Academic Growth**, **Our Journey**. React + TypeScript + Vite + Tailwind; Supabase Auth, PostgreSQL, private Storage, Realtime and Cron; GitHub Pages frontend.
 
-**Status:** implemented locally; not deployed. Owner screenshots confirm the initial schema script succeeded and the midnight Cron job is enabled in Supabase. Live password authentication and app connectivity are not yet verified. Demo mode is explicit and isolated. Do not use the demo to enter real records. See [verification](docs/VERIFICATION.md) for executed checks and remaining service checks.
+**Status:** the updated code is implemented locally; this update has not been deployed or applied to hosted SQL. A read-only check on 14 October reached the configured Supabase Auth service (HTTP 200), with password provider enabled and signup disabled. The new scoring RPC is not installed there yet. Authenticated data flows remain unverified in this update. Demo mode is explicit and isolated. See [verification](docs/VERIFICATION.md) for checks and remaining steps.
 
 ## 1. Run it on your Windows PC
 
@@ -81,7 +83,7 @@ Sign in as each account and check the normal role restrictions. A username or UR
 
 Sign in as **Host**, open **Our Journey → Host settings & challenge controls**. Enter the actual shared A/L examination starting date, check the default scoring values, and save. No date is seeded or guessed.
 
-The defaults are 70 task points + 30 test points; qualify at 85 points, 20 active study days, 80% on-time tasks, and an approved test in all three assigned subjects. Click **Activate the first challenge** once all three accounts are provisioned. Activation is idempotent. There is no manual destructive reset. Earned rewards automatically archive the old challenge and create the next one.
+New-challenge defaults are 70 task points + 15 approved-practice points + 15 equal-subject performance points. The practice target is two approved papers per subject. Qualify at 85 points, 20 active study days, 80% on-time tasks, and at least one approved test in all three assigned subjects; the practice target is not an extra gate. Existing v1 challenges retain their original task/test formula. Click **Activate the first challenge** only if none is already active. Activation is idempotent. Earned rewards automatically archive the old challenge and create the next one.
 
 Exam-date changes take effect immediately. Scoring-setting changes are audited and apply to the **next** challenge; active rules are frozen. This prevents moving the goalposts. Tasks are planned for tomorrow or later; due/current/past obligations cannot be casually deleted or rescheduled to repair a score.
 

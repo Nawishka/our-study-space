@@ -1310,8 +1310,8 @@ textarea {
   border-radius: 15px;
   margin-bottom: 25px;
   color: #716037;
-  animation: celebrate 0.5s ease-out;
 }
+.celebration.celebrating { animation: celebrate 0.5s ease-out; }
 .celebration > svg {
   margin: auto;
 }
@@ -1333,10 +1333,10 @@ textarea {
   height: 125px;
   width: 88px;
 }
-.meeting-characters svg:first-child {
+.celebrating .meeting-characters svg:first-child {
   animation: meet-left 0.7s ease-out;
 }
-.meeting-characters svg:last-child {
+.celebrating .meeting-characters svg:last-child {
   animation: meet-right 0.7s ease-out;
 }
 @keyframes meet-left {
@@ -1825,3 +1825,23 @@ textarea {
     padding: 10px 0;
   }
 }
+
+/* Calm confirmations: only mounted after a server-confirmed action. */
+.feedback-controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px 16px; max-width:1200px; margin:0 auto 12px; padding:0 24px; }
+.feedback-controls button { min-height:44px; display:inline-flex; align-items:center; gap:6px; }
+.feedback-region { position:fixed; bottom:90px; left:50%; transform:translateX(-50%); z-index:80; width:min(440px, calc(100% - 32px)); pointer-events:none; }
+.save-confirmation { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid #b8cdbf; border-radius:16px; background:#f5faf6; color:#30583f; box-shadow:0 8px 30px #263c2520; font-size:.88rem; }
+.save-confirmation button { pointer-events:auto; margin-left:auto; flex-shrink:0; }
+.confirmation-symbol { display:flex; animation:confirmed-tick .28s ease-out; }
+.save-confirmation.submission .confirmation-symbol, .save-confirmation.reward .confirmation-symbol { animation:confirmed-sparkle .45s ease-out; }
+@keyframes confirmed-tick { from { transform:scale(.6); opacity:.3; } to { transform:scale(1); opacity:1; } }
+@keyframes confirmed-sparkle { from { transform:scale(.7) rotate(-12deg); opacity:.3; } to { transform:scale(1) rotate(0); opacity:1; } }
+.score-breakdown { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
+.subject-rings .tiny { display:block; }
+.next-step { margin:18px 25px; padding:14px 16px; border-radius:12px; background:var(--tint, #f4f5f0); font-size:.83rem; line-height:1.7; }
+.score-preview { margin-top:18px; padding:18px; background:#f6f7f2; border:1px solid #dce3d6; border-radius:14px; }
+.score-preview > div { margin-top:14px; }
+.celebration button { margin:6px; }
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
+@media (prefers-reduced-motion:reduce) { .confirmation-symbol, .celebration.celebrating, .celebrating .meeting-characters svg { animation:none !important; } }
+@media (max-width:480px) { .feedback-controls { justify-content:center; padding:0 16px; } .score-breakdown { grid-template-columns:1fr; } }

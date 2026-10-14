@@ -1,5 +1,17 @@
 # Verification and production acceptance
 
+## Scoring/feedback update — 14 October 2026
+
+- TypeScript typecheck and ESLint passed.
+- **51 Vitest tests + 9 Node tests (60 total) passed.** The embedded PostgreSQL suite includes an in-place upgrade with existing identities/password-hash fixtures, profiles, tasks, test/proof rows, archived challenge JSON and a reward. Before/after data and legacy scores match. It exercises equal-subject weighting, mixed maxima, missing subjects, caps, pending/rejected exclusion, correction identity, validation/authorization, read-only previews, version transition, late approval, repeated reward/reset and retained archives. This is an isolated PGlite database with minimal Auth/Storage adapters, not the hosted database.
+- Mocked UI tests verify success only after confirmed saves, no success on failure/offline/undo, once-only task/plan/submission feedback, duplicate Realtime events, persistent independent preferences, reduced motion and silent reward discovery with explicit celebration. Web Audio tests cover gesture initialization, brief generated phrases, replacement of previous playback and unsupported-browser fallback.
+- **15 Playwright checks passed** in Edge at 375×812, 768×1024 and 1440×1000. They cover the three pages, new score breakdown/Host preview, invalid weights, preference persistence, reduced motion, overflow, navigation, completion/undo, login controls and automated axe accessibility. Phone and desktop scoring screenshots were visually reviewed. Browser data checks use explicit demo fixtures, not real study accounts.
+- The production build passed. The normal local preview returned HTTP 200 and the updated journey preview is explicitly labelled as demo/sample data.
+- Read-only calls using the existing public configuration reached the actual Supabase Auth service: HTTP 200, password provider enabled, public signup disabled. The new `preview_challenge_scores` RPC returned PGRST202/404 (not installed). **The hosted migration and online frontend were not updated by this session.** No account passwords or privileged keys were requested or used. Authenticated hosted workflows, physical iPhone audio, and simultaneous-client hosted reward races remain unverified.
+- Apply only [202610140004_scoring_v2.sql](../supabase/migrations/202610140004_scoring_v2.sql), then deploy the frontend through the existing repository workflow. Follow [the upgrade guide](SCORING-AND-FEEDBACK-UPDATE.md). The full-Supabase pgTAP smoke test was added but has not run against a hosted/local full Supabase service here.
+
+The older results below describe the earlier handoff, before the public connection was configured.
+
 ## Executed locally on 12 October 2026
 
 Latest handoff check: TypeScript, ESLint and the production build passed. **34 Vitest + 9 Node tests (43 total)** passed, including rejection of server-secret/service-role frontend configuration. The responsive Edge run passed 10/12 checks initially; two tablet checks timed out during screenshot/axe work with three workers. Both passed when rerun with one worker (17.7 seconds for the two). Thus all 12 browser scenarios passed across the initial run and targeted rerun. These are local login-screen/demo checks, not authenticated hosted-service tests. The normal, non-demo preview returned HTTP 200 at `http://127.0.0.1:5173/`. No Supabase connection could be verified because its public configuration is still missing.
