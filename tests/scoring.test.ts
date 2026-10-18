@@ -9,7 +9,12 @@ import {
 } from "../src/scoring";
 const data = demoData();
 const subjects = data.subjects.filter((s) => s.student_role === "melan");
-const rules = revisedRules(data.settings);
+// Keep explicit v2 fixtures alongside the new practice-focused default.
+const rules = revisedRules({
+  ...data.settings,
+  practice_weight: 15,
+  performance_weight: 15,
+});
 it("calculates the demo preview without rounding or inventing missing subjects", () => {
   const score = {
     ...emptyScore("melan"),

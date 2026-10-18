@@ -69,7 +69,14 @@ export function previewScore(
   const task = score.total_tasks
     ? (rules.task_weight * score.on_time_tasks) / score.total_tasks
     : 0;
-  const total = Math.min(100, Math.max(0, task + practice + performance));
+  const base = task + practice + performance;
+  const total = Math.min(
+    100,
+    Math.max(
+      0,
+      base + (score.manual_points ?? 0) - (score.penalty_points ?? 0),
+    ),
+  );
   return {
     ...score,
     rules_version: 2,
@@ -77,6 +84,7 @@ export function previewScore(
     practice_score: practice,
     performance_score: performance,
     test_score: practice + performance,
+    score_before_adjustments: base,
     score: total,
     qualified:
       total >= rules.target_score &&

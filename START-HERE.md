@@ -1,74 +1,35 @@
-# Our Study Space — finish setup and go online
+# Our Study Space — existing installation
 
-**14 October update:** for the new challenge scoring and optional feedback, follow [the upgrade guide](docs/SCORING-AND-FEEDBACK-UPDATE.md). Apply only `202610140004_scoring_v2.sql` to your existing database. Keep your users, roles and earlier migrations.
+Your repository is [Nawishka/our-study-space](https://github.com/Nawishka/our-study-space). The published address is [Our Study Space](https://nawishka.github.io/our-study-space/) after a successful Pages deployment. Keep the existing Supabase connection values, users, passwords and role mappings.
 
-This is the short guide for **your existing installation**. You have reported that the database migrations, midnight Cron and three role mappings are configured. **Keep them. Do not recreate users or rerun the initial SQL.**
+## Enable the latest features
 
-The app has exactly three pages: Daily Focus, Academic Growth and Our Journey. Login is **host**, **melan** or **shashi**, plus a password. No email field, verification code, signup or SMTP is needed. Supabase validates passwords; protected database roles determine permissions. The `view=host` bookmark cannot give a student host access.
+1. You already applied migration 004. Open [202610170005_notifications_and_points.sql](supabase/migrations/202610170005_notifications_and_points.sql).
+2. Copy its complete contents into a **new SQL Editor snippet** in the existing Supabase project. Click **Run** once and wait for success.
+3. Refresh the app and sign in using **host**, **melan** or **shashi** and the existing password. No email codes, signup or SMTP.
+4. Open **Notifications**. Host sees all students and can filter. Students see only their own notices.
+5. Host can open **Our Journey → Host · Add challenge points**. Review the [points and notification rules](docs/NOTIFICATIONS-AND-POINTS-UPDATE.md) before using it.
 
-## 1. Connect your existing Supabase project
+Do not rerun migrations 001–004 or recreate accounts. GitHub deployment cannot run this SQL for you. No passwords or private keys belong in chat.
 
-Open your project in the [Supabase dashboard](https://supabase.com/dashboard). Click the green **Connect** button at the top. Select **App Frameworks** if it first shows a database connection string. Find **Project URL** and **Publishable key**. Alternative: Project Settings → Data API for the URL, and Project Settings → API Keys for the publishable key. Copy the key beginning `sb_publishable_` (a legacy `anon` key also works). Never use the secret/service-role key.
+## Publish future updates
 
-In a terminal in this project folder, run:
+Use the existing repository and main branch. Commit and push the intended source changes. The existing **Verify and deploy to GitHub Pages** workflow checks and publishes the app. **Supabase migration and policy smoke tests** checks a separate disposable local database in CI; it does not update your hosted data.
 
-```powershell
-npm install
-npm run connect
-npm run dev
-```
+If Pages was intentionally unpublished, restore **Settings → Pages → Source: GitHub Actions** and enable the deploy workflow, then run it on main. Keep both existing public Supabase repository variables unchanged. Do not add a second repository or upload dist manually.
 
-The connection command asks for **only those two public values**. It checks the actual Auth service, requires public signup to be disabled, and saves `.env.local`, which Git ignores. It does not change your accounts or database. If npm is unavailable, install Node.js LTS with npm, reopen your terminal, then retry.
+Confirm both workflows succeed and open the normal sign-in page before sharing the URL. The three bookmarks are:
 
-Open the address printed by the last command, normally **http://127.0.0.1:5173/**. Use this address without `?demo=1`. Sign in with a username and that existing account's password. Passwords are entered privately into the app, never chat.
+- [Host](https://nawishka.github.io/our-study-space/?view=host#/daily)
+- [Melan](https://nawishka.github.io/our-study-space/?view=melan#/daily)
+- [Shashi](https://nawishka.github.io/our-study-space/?view=shashi#/daily)
 
-The underlying Supabase provider is called **Email/password**; leave that provider enabled. The app uses your existing account identifier internally, so you never enter an email or receive a message. Keep **Allow new users to sign up OFF**. Already confirmed accounts do not need confirmation again. If a password fails, first check the password and that `shared/accounts.json` matches the existing account. Do not delete/recreate the user. Owner-only password recovery is in [PASSWORD-SETUP.md](docs/PASSWORD-SETUP.md).
+Bookmarks are only view hints. The backend-verified account determines permissions.
 
-**If you want me to connect it for you:** send only the Project URL and publishable key copied above. No password or privileged key is required for the connection.
+## Check real use privately
 
-## 2. Check the real app once
+Sign in with the existing accounts. Confirm tasks save after refresh, a submitted paper stays pending until Host approval, rejected papers show a red notice, and read status is separate for Host and student. Check live updates on a second device. A demo preview and automated tests do not prove hosted sign-in, uploads, Realtime or Cron execution.
 
-1. Sign in as Host. Open Our Journey → Host settings & challenge controls. Set your actual exam date. Activate the first challenge only if one is not already active.
-2. Sign out and sign in as Melan, then Shashi. Check each sees their own editing controls and the other's shared progress. Create a future task and refresh; confirm it persists.
-3. Submit a marked-paper test as a student. Approve it as Host. Confirm it appears in the approved graph. Open the app on a second device after deployment to check live updates.
+For local development, run npm install then npm run dev in this folder. The existing .env.local is already configured and must remain untracked. Use the normal address without ?demo=1 for real work.
 
-The full acceptance checklist is in [VERIFICATION.md](docs/VERIFICATION.md). Local automated tests do not prove these hosted operations. A saved Cron schedule does not prove that a scheduled run has succeeded.
-
-## 3. Publish with GitHub Pages
-
-Create an empty GitHub repository named **our-study-space** in your own account. In a terminal in this folder, replace `YOUR_USERNAME` below with your GitHub username:
-
-```powershell
-git add .
-git commit -m "Build Our Study Space"
-git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/our-study-space.git
-git push -u origin main
-```
-
-If a remote already exists, use `git remote -v` to check it rather than adding another. The `.env.local` file must remain untracked. Use GitHub's normal credential-manager login when requested.
-
-In that GitHub repository:
-
-1. **Settings → Secrets and variables → Actions → Variables → New repository variable.** Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` using the same public values as step 1.
-2. **Settings → Pages → Source → GitHub Actions.**
-3. **Actions → Verify and deploy to GitHub Pages → Run workflow → main.** Wait for it to pass. Also check the Supabase migration/policy workflow from your push. If the first push ran before configuration was ready, run the deploy workflow again after steps 1–2.
-4. Open the URL shown by the successful deployment. Refresh each page and sign in to confirm it works online. Do not call it live until this succeeds.
-
-The workflow installs, tests, builds and uploads the frontend automatically. It sets the repository subpath. Do not upload `node_modules`, copy `dist` manually, configure SMTP, or rerun your database migrations to deploy the frontend.
-
-Your final bookmarks will be:
-
-```text
-https://YOUR_USERNAME.github.io/our-study-space/?view=host#/daily
-https://YOUR_USERNAME.github.io/our-study-space/?view=melan#/daily
-https://YOUR_USERNAME.github.io/our-study-space/?view=shashi#/daily
-```
-
-## Your controls and ownership
-
-You have the entire source in this folder, all SQL migrations, tests, and deployment workflow. Your GitHub account owns the frontend; your Supabase account owns users, database, private test files and backups. In-app Host controls both students' plans/tasks, test reviews, exam date, scoring settings and first challenge activation. Rewards automatically archive and restart challenges; historical data stays intact.
-
-The app never requires a server-secret key in its frontend. The optional account recovery tool is only for the owner, run privately in a terminal when needed. [README.md](README.md) contains the longer technical reference.
-
-References: [Supabase public keys](https://supabase.com/docs/guides/getting-started/api-keys), [GitHub Pages workflow setup](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+You own the repository, Supabase data and full source. See [README](README.md) for the technical reference and [password recovery](docs/PASSWORD-SETUP.md) only if a password needs an intentional private reset.

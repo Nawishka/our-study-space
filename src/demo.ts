@@ -4,8 +4,9 @@ export function demoData(): Data {
   const today = studyDate();
   const settings = {
     rules_version: 2,
-    practice_weight: 15,
-    performance_weight: 15,
+    postponed_penalty_points: 1,
+    practice_weight: 25,
+    performance_weight: 5,
     practice_target: 2,
     exam_date: null,
     task_weight: 70,
@@ -93,11 +94,55 @@ export function demoData(): Data {
     settings,
     challenges: [challenge],
     rewards: [],
+    notification_reads: [],
+    notifications: [
+      {
+        id: "demo-notice-1",
+        owner_id: "melan",
+        kind: "task_postponed",
+        severity: "warning",
+        title: "Task postponed",
+        message:
+          "SFT past paper · Section A. 1 challenge point deducted once. The total cannot go below zero.",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "demo-notice-2",
+        owner_id: "melan",
+        kind: "score_down",
+        severity: "warning",
+        title: "Challenge score decreased",
+        message:
+          "Sample score change after a missed deadline. Your next step: complete today’s planned tasks.",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "demo-notice-3",
+        owner_id: "shashi",
+        kind: "test_approved",
+        severity: "success",
+        title: "Test approved",
+        message: "CHEM · Test 03. Approved by Host.",
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: "demo-notice-4",
+        owner_id: "shashi",
+        kind: "test_rejected",
+        severity: "warning",
+        title: "Test needs a correction",
+        message:
+          "PHY · Test 04. Please include the marked final page before resubmitting.",
+        created_at: new Date().toISOString(),
+      },
+    ],
     scores: {
       challenge,
       students: {
         melan: {
           ...emptyScore("melan"),
+          missed_tasks: 1,
+          penalty_points: 1,
           total_tasks: 36,
           on_time_tasks: 29,
           active_days: 12,

@@ -1,4 +1,38 @@
 import { expect, test } from "@playwright/test";
+test("notification filters and Host point controls remain usable on every screen", async ({
+  page,
+}) => {
+  await page.goto("./?demo=1#/journey");
+  await page.locator(".notification-panel > summary").click();
+  const notices = page.getByRole("list", { name: "Study notifications" });
+  await expect(notices.getByRole("listitem")).toHaveCount(2);
+  await expect(notices.locator(".notification-warning")).toHaveCount(2);
+  await page.getByLabel("Demo role").selectOption("host");
+  await page.locator(".notification-panel > summary").click();
+  await expect(notices.getByRole("listitem")).toHaveCount(4);
+  await page
+    .getByRole("combobox", { name: "Student", exact: true })
+    .selectOption("shashi");
+  await page
+    .getByRole("combobox", { name: "Show", exact: true })
+    .selectOption("warning");
+  await expect(notices.getByRole("listitem")).toHaveCount(1);
+  await page.getByText("Host · Add challenge points", { exact: true }).click();
+  await page
+    .getByLabel("Reason for these points")
+    .fill("Extra timed paper practice");
+  await page.getByRole("button", { name: "Add points", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("Demo only");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-notifications.png`,
+    fullPage: true,
+  });
+});
 test("revised scoring preview, independent preferences and reduced motion fit the screen", async ({
   page,
 }) => {

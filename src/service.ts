@@ -41,6 +41,7 @@ export async function getProfile(): Promise<Profile | null> {
 export async function loadData(): Promise<Data> {
   if (!supabase) throw new Error("Missing Supabase configuration");
   const scores = await rpc("challenge_scores");
+  let notification_error: string | undefined;
   const names = [
     "profiles",
     "subjects",
@@ -50,6 +51,8 @@ export async function loadData(): Promise<Data> {
     "settings",
     "challenges",
     "rewards",
+    "notifications",
+    "notification_reads",
   ] as const;
   // Supabase returns at most 1,000 rows by default. Read all pages so growth
   // does not silently hide today's tasks or later test records.
@@ -60,9 +63,23 @@ export async function loadData(): Promise<Data> {
         let query = supabase!.from(name).select("*");
         if (name === "task_days")
           query = query.eq("study_date", studyDate()).order("task_id");
-        else query = query.order(name === "subjects" ? "code" : "id");
+        else
+          query = query.order(
+            name === "subjects"
+              ? "code"
+              : name === "notification_reads"
+                ? "notification_id"
+                : "id",
+          );
         const result = await query.range(offset, offset + 499);
-        if (result.error) throw new Error(result.error.message);
+        if (result.error) {
+          if (name === "notifications" || name === "notification_reads") {
+            notification_error =
+              "Notifications could not load. Check your connection and retry. If this continues, ask Host to finish the app update.";
+            return [];
+          }
+          throw new Error(result.error.message);
+        }
         all.push(...result.data);
         if (result.data.length < 500) break;
       }
@@ -72,7 +89,7 @@ export async function loadData(): Promise<Data> {
   const data = Object.fromEntries(
     names.map((n, i) => [n, n === "settings" ? results[i][0] : results[i]]),
   ) as Omit<Data, "scores">;
-  return { ...data, scores };
+  return { ...data, scores, notification_error };
 }
 export async function proofLinks(testId: string) {
   if (!supabase) throw new Error("Demo proofs are not real files.");

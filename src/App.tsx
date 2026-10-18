@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Auth from "./Auth";
 import { FeedbackControls } from "./Feedback";
+import Notifications from "./Notifications";
 const Academic = lazy(() => import("./Academic"));
 const Journey = lazy(() => import("./Journey"));
 import { Brand, Clock, Daily } from "./ui";
@@ -199,6 +200,16 @@ export default function App() {
       </div>
       <FeedbackControls />
       <main id="main-content" className="main-content">
+        {study.data && (
+          <Notifications
+            key={profile.id}
+            data={study.data}
+            profile={profile}
+            mutate={study.mutate}
+            refresh={study.refresh}
+            demo={demo}
+          />
+        )}
         {page !== "journey" &&
           latestReward &&
           latestReward.id !== sessionStorage.getItem("reward-seen") && (

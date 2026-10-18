@@ -1,0 +1,17 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+set search_path=public,extensions;
+select plan(11);
+select has_table('public','notifications','Persistent notification inbox');
+select has_table('public','notification_reads','Separate read receipts');
+select has_table('public','score_adjustments','Auditable manual adjustments');
+select ok((select relrowsecurity from pg_class where oid='public.notifications'::regclass),'Notifications use RLS');
+select ok(not has_table_privilege('authenticated','public.score_adjustments','INSERT'),'Manual adjustments cannot bypass RPC');
+select ok(not has_table_privilege('authenticated','public.notifications','INSERT'),'Students cannot forge notices');
+select ok(not has_function_privilege('anon','public.add_manual_points(uuid,uuid,uuid,numeric,text)','EXECUTE'),'Anonymous score writes blocked');
+select ok(not has_function_privilege('authenticated','private.adjusted_score(uuid,uuid,jsonb)','EXECUTE'),'Private score calculator protected');
+select ok(not has_table_privilege('authenticated','private.score_notice_state','SELECT'),'Internal score state is private');
+select ok((select practice_weight=25 and performance_weight=5 and postponed_penalty_points=1 from public.settings where id=true),'Practice-focused defaults and one-point deduction');
+select ok((select count(*)=3 from pg_publication_tables where pubname='supabase_realtime' and tablename in ('notifications','notification_reads','score_adjustments')),'Authorized live updates enabled');
+select * from finish();
+rollback;

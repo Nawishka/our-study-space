@@ -1845,3 +1845,17 @@ textarea {
 html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; }
 @media (prefers-reduced-motion:reduce) { .confirmation-symbol, .celebration.celebrating, .celebrating .meeting-characters svg { animation:none !important; } }
 @media (max-width:480px) { .feedback-controls { justify-content:center; padding:0 16px; } .score-breakdown { grid-template-columns:1fr; } }
+/* A persistent, quiet notification centre. Warnings use text and an icon as
+   well as red, so their meaning does not depend on colour. */
+.notification-panel { margin-bottom: 24px; }
+.notification-panel summary { display: flex; align-items: center; gap: 12px; cursor: pointer; min-height: 44px; font-weight: 600; flex-wrap: wrap; }
+.notification-panel summary .pill { margin-left: auto; }
+.notification-filters { display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0; }
+.notification-filters label { flex: 1 1 170px; }
+.notification-list { list-style: none; padding: 0; margin: 0; max-height: 520px; overflow-y: auto; }
+.notification-item { border: 1px solid #e3e5df; border-radius: 16px; padding: 16px; margin: 12px 0; overflow-wrap: anywhere; }
+.notification-title, .notification-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.notification-meta { justify-content: space-between; }
+.notification-warning { background: #fff1ef; border: 1px solid #dfaaa5; color: #8b302c; }
+.notification-warning .text-button { color: #8b302c; }
+.notification-item p { margin: 10px 0; font-size: .9rem; }

@@ -24,6 +24,7 @@ import type { Mutate } from "./Academic";
 import { nextStep, previewScore, revisedRules, rulesError } from "./scoring";
 import { rpc } from "./service";
 import { useFeedback } from "./Feedback";
+import HostPoints from "./HostPoints";
 export function Character({ student }: { student: Student }) {
   return (
     <svg
@@ -156,6 +157,12 @@ function HostSettings({
         <p className="notice">
           Scoring rules are frozen when a challenge starts. Changes here apply
           to the next challenge, keeping the current goalposts steady.
+        </p>
+        <p className="tiny muted">
+          The practice-focused default is 70 task / 25 practice / 5 performance
+          points. Missed deadlines cost 1 point once per task. The new penalty
+          starts with deadlines on the installation day; earlier overdue tasks
+          are exempt.
         </p>
         {!installed && (
           <p role="alert" className="notice">
@@ -295,6 +302,10 @@ function HostSettings({
                     {preview.rules.practice_weight} · Performance{" "}
                     {score.performance_score?.toFixed(1)} /{" "}
                     {preview.rules.performance_weight}
+                    {" · Host +"}
+                    {(score.manual_points ?? 0).toFixed(1)}
+                    {" · Postponements −"}
+                    {(score.penalty_points ?? 0).toFixed(1)}
                   </p>
                 </div>
               );
@@ -597,6 +608,33 @@ export default function Journey({
                   </div>
                 )}
               </div>
+              {rules.postponed_penalty_points !== undefined && (
+                <div
+                  className={
+                    (score.penalty_points ?? 0) > 0
+                      ? "notice notification-warning"
+                      : "notice"
+                  }
+                >
+                  <strong>
+                    Postponement deductions: −
+                    {(score.penalty_points ?? 0).toFixed(1)} pts
+                  </strong>
+                  <p className="tiny">
+                    {score.missed_tasks ?? 0} missed original deadlines × 1
+                    point. Charged once per task; completing it late does not
+                    erase the deduction.{" "}
+                    {rules.penalty_effective_from &&
+                      `Applies to tasks originally due from ${formatDate(rules.penalty_effective_from)}.`}
+                  </p>
+                </div>
+              )}
+              {(score.manual_points ?? 0) > 0 && (
+                <p className="notice">
+                  Host-added points: +{score.manual_points!.toFixed(1)}. Reasons
+                  are saved in the notification panel.
+                </p>
+              )}
               <p className="next-step">
                 <strong>Your next step</strong>
                 <br />
@@ -686,6 +724,15 @@ export default function Journey({
           server archives the results, issues one reward, and starts the next
           challenge at zero. Completed archived tasks cannot be undone.
         </p>
+        <p>
+          When the postponement rule is enabled, a task missed at the end of its
+          original Sri Lankan due day deducts 1 point once, in addition to its
+          effect on the on-time ratio. Repeated carryovers do not add
+          deductions. Host adjustments apply only to their recorded challenge.
+          The final calculation is task + practice + performance + Host points −
+          postponement deductions, limited to 0–100. Manual points do not
+          replace the other eligibility requirements.
+        </p>
       </details>
       <section className="card reward-history">
         <div className="section-heading">
@@ -746,7 +793,10 @@ export default function Journey({
         )}
       </section>
       {profile.role === "host" && (
-        <HostSettings data={data} mutate={mutate} demo={demo} />
+        <>
+          <HostPoints data={data} mutate={mutate} demo={demo} />
+          <HostSettings data={data} mutate={mutate} demo={demo} />
+        </>
       )}
     </>
   );

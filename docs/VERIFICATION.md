@@ -1,5 +1,16 @@
 # Verification and production acceptance
 
+## Notifications/points update — 18 October 2026
+
+- TypeScript typecheck, ESLint and production build passed. The build was checked with the actual `/our-study-space/` project subpath.
+- All **60 Vitest cases** passed across the full suite and targeted reruns after fixing test fixtures. This includes **20 embedded PostgreSQL cases** loading the actual migrations through 005. **9 Node tests** also passed. New checks cover once-only prospective penalties, late completion/history, no negative total, Host-only positive adjustments, repeated receipts, separate reader state, notification privacy, approval/correction notices, score decreases, and exact reward/archive/reset with manual points.
+- **18 Playwright checks passed** against the production preview in Edge at 375×812, 768×1024 and 1440×1000. This includes all prior flows, accessibility checks, notification filters, red warnings and Host point controls. The phone notification screenshot was visually reviewed. These are explicit demo/browser fixtures, not authenticated hosted work. Initial test selector and preview configuration errors were corrected before this final passing run.
+- A read-only check reached hosted Supabase Auth (HTTP 200, signup disabled). The new notifications endpoint returned PGRST205/404: **migration 005 was not installed at that check**. The owner has already confirmed applying migration 004. Do not rerun it.
+- GitHub Pages and its existing workflow were re-enabled for publication. The deployment workflow runs all frontend checks again; the database workflow runs full disposable Supabase/pgTAP in CI. Neither workflow applies SQL to the hosted project.
+- Apply only [202610170005_notifications_and_points.sql](../supabase/migrations/202610170005_notifications_and_points.sql), then verify real sign-in, save/review/notification flows privately. Hosted login, Storage, Realtime transport and Cron execution are not verified by these local tests. Existing public connection configuration was retained; no account passwords or private keys were requested.
+
+The following sections are historical reports from earlier work, not the current installation status.
+
 ## Scoring/feedback update — 14 October 2026
 
 - TypeScript typecheck and ESLint passed.

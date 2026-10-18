@@ -38,6 +38,8 @@ export interface TestRecord {
   challenge_id: string | null;
 }
 export interface Settings {
+  postponed_penalty_points?: number;
+  penalty_effective_from?: string;
   rules_version?: number;
   practice_weight?: number;
   performance_weight?: number;
@@ -50,6 +52,10 @@ export interface Settings {
   minimum_on_time: number;
 }
 export interface Score {
+  missed_tasks?: number;
+  penalty_points?: number;
+  manual_points?: number;
+  score_before_adjustments?: number;
   rules_version?: number;
   practice_score?: number;
   performance_score?: number;
@@ -80,6 +86,9 @@ export interface Reward {
   redeemed_at: string | null;
 }
 export interface Data {
+  notifications?: StudyNotification[];
+  notification_reads?: { notification_id: string; reader_id: string }[];
+  notification_error?: string;
   profiles: Profile[];
   subjects: Subject[];
   tasks: Task[];
@@ -89,6 +98,22 @@ export interface Data {
   challenges: Challenge[];
   rewards: Reward[];
   scores: { challenge?: Challenge; students?: Record<Student, Score> };
+}
+export interface StudyNotification {
+  id: string;
+  owner_id: string;
+  kind:
+    | "score_up"
+    | "score_down"
+    | "test_approved"
+    | "test_rejected"
+    | "task_postponed"
+    | "manual_points"
+    | "reward";
+  severity: "info" | "success" | "warning";
+  title: string;
+  message: string;
+  created_at: string;
 }
 export const STUDENTS: Student[] = ["melan", "shashi"];
 export const NAMES: Record<Role, string> = {

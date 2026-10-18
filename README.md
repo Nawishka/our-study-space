@@ -1,12 +1,12 @@
 # Our Study Space
 
-**Latest update:** [Scoring v2 and optional sound/motion feedback](docs/SCORING-AND-FEEDBACK-UPDATE.md). Existing installations apply only the new `202610140004_scoring_v2.sql` migration. Active challenges keep their old formula; new challenges freeze the configurable 70 task / 15 practice / 15 performance rules.
+**Latest update:** [Notifications, missed-task deductions and Host points](docs/NOTIFICATIONS-AND-POINTS-UPDATE.md). This existing database needs only `202610170005_notifications_and_points.sql`; migration 004 is already applied. New-challenge defaults are 70 task / 25 practice / 5 performance.
 
-**For this existing installation, follow [START-HERE.md](START-HERE.md).** It is the short path: connect the two public Supabase values, sign in, then deploy through GitHub Actions. The sections below are the full reference, including fresh-install instructions that you do not need to repeat.
+**For this existing installation, follow [START-HERE.md](START-HERE.md).** Existing Supabase public configuration and the GitHub repository are already connected. Fresh-install instructions below are reference only.
 
 A private study studio for Melan, Shashi and a separate host. Three pages: **Daily Focus**, **Academic Growth**, **Our Journey**. React + TypeScript + Vite + Tailwind; Supabase Auth, PostgreSQL, private Storage, Realtime and Cron; GitHub Pages frontend.
 
-**Status:** the updated code is implemented locally; this update has not been deployed or applied to hosted SQL. A read-only check on 14 October reached the configured Supabase Auth service (HTTP 200), with password provider enabled and signup disabled. The new scoring RPC is not installed there yet. Authenticated data flows remain unverified in this update. Demo mode is explicit and isolated. See [verification](docs/VERIFICATION.md) for checks and remaining steps.
+**Verification boundary:** hosted Supabase Auth responds and public signup remains disabled. The new notifications table was absent in the read-only check on 18 October 2026. Apply the new migration separately; frontend deployment does not update SQL. Authenticated hosted workflows still require account-owner verification. Demo mode is explicit and isolated.
 
 ## 1. Run it on your Windows PC
 
@@ -43,7 +43,7 @@ Only one package manager is needed. `package-lock.json` is the deployment source
 ## 2. Create and configure Supabase
 
 1. Create a Supabase project in your own account. Keep its database password private.
-2. In the **SQL Editor**, run `supabase/migrations/202610120001_study_space.sql`, then `202610120002_cron.sql`, in that order. These are versioned one-time migrations; do not paste them repeatedly into an already migrated database. They run from a clean project. With the CLI, `supabase link --project-ref YOUR_PROJECT_REF` then `supabase db push` tracks which migrations were applied.
+2. In the **SQL Editor**, run `supabase/migrations/202610120001_study_space.sql`, then the remaining numbered migrations through `202610170005_notifications_and_points.sql`, in order (fresh installations only). These are versioned one-time migrations; do not paste them repeatedly into an already migrated database. They run from a clean project. With the CLI, `supabase link --project-ref YOUR_PROJECT_REF` then `supabase db push` tracks which migrations were applied.
 3. In **Storage**, confirm `test-proofs` exists, is **private**, limits files to **10 MB**, and allows only JPEG/PNG/WebP/PDF. Policies are installed by the migration.
 4. In **Database → Replication / Realtime**, confirm `tasks`, `task_days`, `tests`, `settings`, `challenges`, and `rewards` belong to the `supabase_realtime` publication. The migration adds these. No presence channel is used.
 5. In **Integrations / Cron**, confirm `study-midnight` runs at `30 18 * * *` UTC, which is midnight in Sri Lanka. Inspect `cron.job_run_details` after a run. If your project requires enabling Cron first, enable it and then apply the second migration. The authenticated catch-up routine also repairs missed days every minute while the app is open, on reconnect and on initial loading.
@@ -83,9 +83,9 @@ Sign in as each account and check the normal role restrictions. A username or UR
 
 Sign in as **Host**, open **Our Journey → Host settings & challenge controls**. Enter the actual shared A/L examination starting date, check the default scoring values, and save. No date is seeded or guessed.
 
-New-challenge defaults are 70 task points + 15 approved-practice points + 15 equal-subject performance points. The practice target is two approved papers per subject. Qualify at 85 points, 20 active study days, 80% on-time tasks, and at least one approved test in all three assigned subjects; the practice target is not an extra gate. Existing v1 challenges retain their original task/test formula. Click **Activate the first challenge** only if none is already active. Activation is idempotent. Earned rewards automatically archive the old challenge and create the next one.
+After migration 005, new-challenge defaults are 70 task points + 25 approved-practice points + 5 equal-subject performance points. The practice target is two approved papers per subject. Qualify at 85 points, 20 active study days, 80% on-time tasks, and at least one approved test in all three assigned subjects; the practice target is not an extra gate. Existing v1 challenges retain their original task/test formula. Click **Activate the first challenge** only if none is already active. Activation is idempotent. Earned rewards automatically archive the old challenge and create the next one.
 
-Exam-date changes take effect immediately. Scoring-setting changes are audited and apply to the **next** challenge; active rules are frozen. This prevents moving the goalposts. Tasks are planned for tomorrow or later; due/current/past obligations cannot be casually deleted or rescheduled to repair a score.
+Exam-date changes take effect immediately. Scoring-setting changes are audited and apply to the **next** challenge; active weights are frozen. Migration 005 adds an audited one-point missed-deadline deduction prospectively; see the update guide for the effective date. Tasks are planned for tomorrow or later; due/current/past obligations cannot be casually deleted or rescheduled to repair a score.
 
 Subjects are seeded as Melan: ET/SFT/ICT; Shashi: Biology/Chemistry/Physics. A test number is reserved when a draft is saved. Abandoned drafts may leave sequence gaps; numbers are never reused. A rejected correction retains its number and original challenge allocation. Drafts are visible to their owner and host.
 
@@ -93,7 +93,7 @@ See [architecture](docs/ARCHITECTURE.md) for precise denominator, active-day, el
 
 ## 5. Push to GitHub and deploy Pages
 
-No GitHub remote or account was provided. Create a repository in your account. A private repository's Pages availability depends on your GitHub plan. The static frontend itself can be publicly downloadable; private study data is protected by Supabase authentication/RLS.
+This installation uses `Nawishka/our-study-space`, with existing public Supabase repository variables. Keep them. The following repository creation example is only for a fresh installation. A private repository's Pages availability depends on your GitHub plan. The static frontend itself can be publicly downloadable; private study data is protected by Supabase authentication/RLS.
 
 From this folder, after checking that no `.env.local` or secrets are staged:
 
@@ -168,4 +168,4 @@ For SQL/policy smoke tests on your own PC, install Docker Desktop and the Supaba
 - Keep Supabase signup disabled and review new migrations, dependency updates, password recovery, backups and database logs periodically.
 - Source: `src/` app; `supabase/migrations/` schema/policies/RPCs; `tests/` executable checks; `.github/workflows/` CI/Pages; `docs/` decisions and acceptance.
 
-**Still needed for this installation:** the Supabase Project URL and public publishable key to connect the local app, then your GitHub repository/Pages configuration for deployment. Enter the actual exam date inside the Host controls. You report that identities/roles, migrations and Cron are already configured; live sign-in and data flows are not yet verified. No password or privileged key needs to be shared in chat.
+**Remaining database step:** apply only migration 005 as described in [the update guide](docs/NOTIFICATIONS-AND-POINTS-UPDATE.md). Keep existing credentials and public configuration. Verify real sign-in and authenticated actions privately; no password or privileged key needs to be shared in chat.

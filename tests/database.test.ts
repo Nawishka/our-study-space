@@ -10,6 +10,9 @@ let upgradeBefore: unknown;
 let upgradeAfter: unknown;
 let legacyBefore: unknown;
 let legacyAfter: unknown;
+let pointsUpgradePreserved = false;
+let newDefaults: unknown;
+let penaltyAmendment: unknown;
 const ids = {
   host: "00000000-0000-0000-0000-000000000001",
   melan: "00000000-0000-0000-0000-000000000002",
@@ -140,6 +143,46 @@ beforeAll(async () => {
         [ids.melan],
       )
     )[0].score;
+    const beforePoints = await retained();
+    const scoreBeforePoints = legacyAfter as Score;
+    await db.exec(
+      readFileSync(
+        new URL(
+          "../supabase/migrations/202610170005_notifications_and_points.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      ).replace(/alter publication supabase_realtime add table[^;]+;/g, ""),
+    );
+    const afterPoints = await retained();
+    // Only the active challenge receives the prospectively effective penalty.
+    const stripActiveRules = (tables: Record<string, unknown>[][]) =>
+      tables.map((table, i) =>
+        i === 6
+          ? table.map((c) =>
+              c.ended_at === null ? { ...c, rules: undefined } : c,
+            )
+          : table,
+      );
+    pointsUpgradePreserved =
+      JSON.stringify(stripActiveRules(beforePoints)) ===
+      JSON.stringify(stripActiveRules(afterPoints));
+    newDefaults = (
+      await rows(
+        "select practice_weight,performance_weight,postponed_penalty_points from public.settings",
+      )
+    )[0];
+    penaltyAmendment = (
+      await rows("select rules from public.challenges where ended_at is null")
+    )[0].rules;
+    const scoreAfterPoints = (
+      await rows(
+        "select private.score((select id from public.challenges where ended_at is null),$1) value",
+        [ids.melan],
+      )
+    )[0].value as Score;
+    pointsUpgradePreserved &&=
+      scoreAfterPoints.score === scoreBeforePoints.score;
   } catch (e) {
     const detail = e as {
       message: string;
@@ -162,6 +205,9 @@ beforeAll(async () => {
 beforeEach(async () => {
   await admin();
   await db.exec(
+    "update private.notification_config set enabled_on=private.today() where id=true",
+  );
+  await db.exec(
     "truncate auth.users cascade; truncate public.challenges cascade; truncate public.audit_log; truncate storage.objects; update public.settings set exam_date=null,task_weight=70,test_weight=30,practice_weight=15,performance_weight=15,practice_target=2,rules_version=2,target_score=85,minimum_days=20,minimum_on_time=80;",
   );
   for (const role of ["host", "melan", "shashi"] as const) {
@@ -176,6 +222,269 @@ afterAll(async () => {
   await db?.close();
 });
 describe("database security and lifecycle", () => {
+  it("deducts each missed original obligation once, exempts earlier deadlines, and never refunds late work", async () => {
+    await admin();
+    await db.exec(`insert into public.challenges(started_at,rules) select now()-interval '10 days',
+      (to_jsonb(s)-'id'-'exam_date')||jsonb_build_object('penalty_effective_from',private.today()-3) from public.settings s;
+      update private.notification_config set enabled_on=private.today()-3 where id=true;`);
+    const cid = (await rows("select id from public.challenges"))[0].id;
+    await db.query(
+      `insert into public.tasks(id,owner_id,title,original_due,challenge_id)
+      select gen_random_uuid(),$1,'Missed task',private.today()-n,$2 from generate_series(1,4) n`,
+      [ids.melan, cid],
+    );
+    await as("melan");
+    await db.exec("select public.catch_up(); select public.catch_up()");
+    const readScore = async () =>
+      (
+        (await rows("select public.challenge_scores() value"))[0].value as {
+          students: { melan: Score };
+        }
+      ).students.melan;
+    expect(await readScore()).toMatchObject({
+      missed_tasks: 3,
+      penalty_points: 3,
+      total_tasks: 4,
+      score: 0,
+    });
+    expect(
+      await rows(
+        "select * from public.notifications where kind='task_postponed'",
+      ),
+    ).toHaveLength(3);
+    const task = (
+      await rows(
+        "select id from public.tasks order by original_due desc limit 1",
+      )
+    )[0].id;
+    await db.query("select public.complete_task($1,true)", [task]);
+    expect(await readScore()).toMatchObject({
+      missed_tasks: 3,
+      penalty_points: 3,
+      total_tasks: 4,
+      on_time_tasks: 0,
+    });
+    await db.exec("select public.catch_up()");
+    expect(
+      await rows(
+        "select * from public.notifications where kind='task_postponed'",
+      ),
+    ).toHaveLength(3);
+    await admin();
+    expect(
+      (
+        await rows(
+          "select completed from public.task_days where task_id=$1 and study_date=private.today()",
+          [task],
+        )
+      )[0].completed,
+    ).toBe(true);
+    expect(
+      (
+        await rows(
+          "select completed from public.task_days where task_id=$1 and study_date=private.today()-1",
+          [task],
+        )
+      )[0].completed,
+    ).toBe(false);
+  });
+  it("adds audited Host points idempotently, clamps at 100, and retains eligibility gates", async () => {
+    await as("host");
+    await db.exec("select public.activate_challenge()");
+    const cid = (await rows("select id from public.challenges"))[0].id;
+    const args = [tid(700), ids.melan, cid, 100, "Recognise extra practice"];
+    for (let retry = 0; retry < 3; retry++)
+      await db.query("select public.add_manual_points($1,$2,$3,$4,$5)", args);
+    await db.query(
+      "select public.add_manual_points($1,$2,$3,10,'Second adjustment')",
+      [tid(701), ids.melan, cid],
+    );
+    const value = (await rows("select public.challenge_scores() value"))[0]
+      .value as { students: { melan: Score } };
+    expect(value.students.melan).toMatchObject({
+      score: 100,
+      manual_points: 110,
+      qualified: false,
+    });
+    expect(await rows("select * from public.score_adjustments")).toHaveLength(
+      2,
+    );
+    expect(
+      await rows(
+        "select * from public.audit_log where action='manual_points_added'",
+      ),
+    ).toHaveLength(2);
+    expect(
+      await rows(
+        "select * from public.notifications where kind='manual_points'",
+      ),
+    ).toHaveLength(2);
+    expect(
+      await rows("select * from public.notifications where kind='score_up'"),
+    ).toHaveLength(1);
+    expect(await rows("select * from public.rewards")).toHaveLength(0);
+    await expect(
+      db.query("select public.add_manual_points($1,$2,$3,$4,$5)", [
+        ...args.slice(0, 3),
+        99,
+        args[4],
+      ]),
+    ).rejects.toThrow("already used");
+    await expect(
+      db.query(
+        "select public.add_manual_points($1,$2,$3,'NaN','Invalid value')",
+        [tid(702), ids.melan, cid],
+      ),
+    ).rejects.toThrow();
+    await expect(
+      db.query("select public.add_manual_points($1,$2,$3,-1,'Invalid value')", [
+        tid(702),
+        ids.melan,
+        cid,
+      ]),
+    ).rejects.toThrow();
+    for (const role of ["melan", "shashi"] as const) {
+      await as(role);
+      await expect(
+        db.query("select public.add_manual_points($1,$2,$3,$4,$5)", args),
+      ).rejects.toThrow("Host access required");
+      await expect(
+        db.exec("update public.score_adjustments set points=100"),
+      ).rejects.toThrow("permission denied");
+    }
+  });
+  it("isolates student notifications and read receipts while Host sees all students", async () => {
+    await as("host");
+    await db.exec("select public.activate_challenge()");
+    const cid = (await rows("select id from public.challenges"))[0].id;
+    for (const [i, role] of (["melan", "shashi"] as const).entries())
+      await db.query(
+        "select public.add_manual_points($1,$2,$3,2,'Extra study effort')",
+        [tid(710 + i), ids[role], cid],
+      );
+    const all = await rows("select * from public.notifications");
+    expect(all).toHaveLength(4);
+    const melanNotice = all.find((n) => n.owner_id === ids.melan)!.id;
+    const shashiNotice = all.find((n) => n.owner_id === ids.shashi)!.id;
+    await db.query("select public.mark_notification_read($1)", [melanNotice]);
+    await as("melan");
+    expect(await rows("select * from public.notifications")).toHaveLength(2);
+    expect(await rows("select * from public.notification_reads")).toHaveLength(
+      0,
+    );
+    await expect(
+      db.query("select public.mark_notification_read($1)", [shashiNotice]),
+    ).rejects.toThrow("Access denied");
+    await db.query("select public.mark_notification_read($1)", [melanNotice]);
+    await db.query("select public.mark_notification_read($1)", [melanNotice]);
+    expect(await rows("select * from public.notification_reads")).toHaveLength(
+      1,
+    );
+    await expect(
+      db.exec("update public.notifications set message='Forged'"),
+    ).rejects.toThrow("permission denied");
+    await as("shashi");
+    expect(await rows("select * from public.notifications")).toHaveLength(2);
+    expect(await rows("select * from public.notification_reads")).toHaveLength(
+      0,
+    );
+    await as("host");
+    expect(await rows("select * from public.notification_reads")).toHaveLength(
+      1,
+    );
+  });
+  it("persists red score-decrease warnings without duplicate refresh events", async () => {
+    await as("host");
+    await db.exec("select public.activate_challenge()");
+    await admin();
+    await db.query(
+      "insert into public.tasks(id,owner_id,title,original_due,challenge_id) values($1,$2,'Today task',private.today(),(select id from public.challenges))",
+      [tid(730), ids.melan],
+    );
+    await as("melan");
+    await db.query("select public.complete_task($1,true)", [tid(730)]);
+    await db.query("select public.complete_task($1,false)", [tid(730)]);
+    await db.exec("select public.catch_up(); select public.catch_up()");
+    const notices = await rows(
+      "select kind,severity from public.notifications where kind in ('score_up','score_down') order by created_at",
+    );
+    expect(notices).toEqual([
+      { kind: "score_up", severity: "success" },
+      { kind: "score_down", severity: "warning" },
+    ]);
+  });
+  it("freezes manual adjustments in one reward, resets to zero and makes retries safe after rollover", async () => {
+    await admin();
+    await db.exec(
+      "insert into public.challenges(started_at,rules) select now()-interval '25 days',to_jsonb(s)-'id'-'exam_date' from public.settings s",
+    );
+    const cid = (await rows("select id from public.challenges"))[0].id;
+    for (const role of ["melan", "shashi"] as const) {
+      await db.query(
+        `insert into public.tasks(id,owner_id,title,original_due,completed_at,challenge_id)
+        select gen_random_uuid(),$1,'Completed',private.today()-n,((private.today()-n)::timestamp+interval '12 hours') at time zone 'Asia/Colombo',$2 from generate_series(1,20)n`,
+        [ids[role], cid],
+      );
+      await db.query(
+        "insert into public.tests(id,owner_id,subject_code,test_number,obtained,maximum,taken_on,status,challenge_id) select gen_random_uuid(),$1,code,1,0,100,private.today(),'approved',$2 from public.subjects where student_role=$3",
+        [ids[role], cid, role],
+      );
+    }
+    await as("host");
+    for (const [i, role] of (["melan", "shashi"] as const).entries())
+      await db.query(
+        "select public.add_manual_points($1,$2,$3,8,'Additional study effort')",
+        [tid(750 + i), ids[role], cid],
+      );
+    const archived = (
+      await rows("select snapshot from public.challenges where id=$1", [cid])
+    )[0].snapshot;
+    await db.query(
+      "select public.add_manual_points($1,$2,$3,8,'Additional study effort')",
+      [tid(751), ids.shashi, cid],
+    );
+    await db.exec("select public.catch_up(); select public.catch_up()");
+    expect(await rows("select * from public.rewards")).toHaveLength(1);
+    expect(await rows("select * from public.challenges")).toHaveLength(2);
+    expect(
+      await rows("select * from public.notifications where kind='reward'"),
+    ).toHaveLength(2);
+    expect(
+      (await rows("select public.challenge_scores() value"))[0].value,
+    ).toMatchObject({
+      students: {
+        melan: { score: 0, manual_points: 0 },
+        shashi: { score: 0, manual_points: 0 },
+      },
+    });
+    expect(
+      (
+        await rows("select snapshot from public.challenges where id=$1", [cid])
+      )[0].snapshot,
+    ).toEqual(archived);
+    expect(archived).toMatchObject({
+      melan: { manual_points: 8, score: 85.5 },
+      shashi: { manual_points: 8, score: 85.5 },
+    });
+    await expect(
+      db.query(
+        "select public.add_manual_points($1,$2,$3,2,'Archived edit blocked')",
+        [tid(752), ids.melan, cid],
+      ),
+    ).rejects.toThrow("challenge changed");
+  });
+  it("installs notifications and prospective penalties without changing work, passwords, earned scores or archives", () => {
+    expect(pointsUpgradePreserved).toBe(true);
+    expect(newDefaults).toMatchObject({
+      practice_weight: "25",
+      performance_weight: "5",
+      postponed_penalty_points: "1",
+    });
+    expect(penaltyAmendment).toMatchObject({ postponed_penalty_points: 1 });
+    expect(
+      (penaltyAmendment as Record<string, unknown>).penalty_effective_from,
+    ).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
   it("upgrades without changing existing users/password hashes, roles, work, proofs, challenge JSON or rewards, and preserves the exact legacy score", () => {
     expect(upgradeAfter).toEqual(upgradeBefore);
     expect(legacyAfter).toEqual(legacyBefore);
@@ -273,6 +582,15 @@ describe("database security and lifecycle", () => {
     ).toBe(1);
     await as("host");
     await db.query("select public.review_test($1,true)", [tid(1)]);
+    await db.query("select public.review_test($1,true)", [tid(1)]);
+    expect(
+      await rows(
+        "select kind,severity from public.notifications where kind like 'test_%' order by created_at",
+      ),
+    ).toEqual([
+      { kind: "test_rejected", severity: "warning" },
+      { kind: "test_approved", severity: "success" },
+    ]);
     await as("shashi");
     expect(await rows("select * from public.tests")).toHaveLength(1);
     expect(await rows("select * from public.evidence")).toHaveLength(0);
