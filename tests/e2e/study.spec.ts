@@ -89,7 +89,7 @@ test("three pages fit, navigation survives refresh, demo is explicit", async ({
   await page.goto("./?demo=1#/daily");
   await expect(page.getByText("DEMO PREVIEW", { exact: false })).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Make room for progress." }),
+    page.getByRole("heading", { name: "Your goal needs action today." }),
   ).toBeVisible();
   for (const route of ["daily", "academic", "journey"]) {
     await page.goto("./?demo=1#/" + route);

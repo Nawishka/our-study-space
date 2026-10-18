@@ -28,7 +28,7 @@ export function Brand() {
       </span>
       <span>
         our study space
-        <span className="brand-sub">A LITTLE SPACE. A LITTLE PROGRESS.</span>
+        <span className="brand-sub">FOCUS TODAY. BUILD TOMORROW.</span>
       </span>
     </a>
   );
@@ -186,12 +186,12 @@ export function Daily({
   return (
     <>
       <PageHeading
-        eyebrow="ONE DAY AT A TIME"
-        title="Make room for progress."
-        description="A fresh page, a shared purpose. Let’s make today count."
+        eyebrow="DAILY FOCUS / MAKE IT COUNT"
+        title="Your goal needs action today."
+        description="Show up. Do the work. Build your future."
         aside={
           <span className="pill">
-            <Leaf size={14} /> Steady is a beautiful pace
+            <Leaf size={14} /> Consistency over intensity
           </span>
         }
       />
@@ -232,9 +232,9 @@ export function Daily({
           <p>{exam.detail}</p>
         </div>
         <div className="exam-note">
-          Small steps today.
+          Start before
           <br />
-          <em>Big possibilities tomorrow.</em>
+          <em>you feel ready.</em>
           {data.settings.exam_date && (
             <span>{formatDate(data.settings.exam_date)}</span>
           )}
@@ -242,7 +242,7 @@ export function Daily({
       </section>
       <div className="section-heading">
         <h2>Today’s focus</h2>
-        <span className="muted tiny">Two paths. Cheering each other on.</span>
+        <span className="muted tiny">Two routines. One shared commitment.</span>
       </div>
       <div className="student-grid">
         {(["melan", "shashi"] as Student[]).map((student) => {
@@ -270,8 +270,8 @@ export function Daily({
                   student={student}
                   subtitle={
                     editable
-                      ? "Your little steps matter."
-                      : "A little encouragement goes a long way."
+                      ? "Commit to the next task."
+                      : "Their progress, shared with you."
                   }
                 />
                 <button
@@ -344,7 +344,7 @@ export function Daily({
                     <Empty>
                       {tasks.length
                         ? "Everything for today is done. Take a breath."
-                        : "Plan something small for tomorrow in Academic Growth."}
+                        : "Plan tomorrow’s first task in Academic Growth."}
                     </Empty>
                   )}
                   <h3 className="list-heading done-label">
@@ -364,13 +364,13 @@ export function Daily({
                   </ul>
                   {!done.length && (
                     <p className="tiny muted empty-line">
-                      Your first little win is waiting.
+                      Choose one task. Finish it well.
                     </p>
                   )}
                   <footer className="card-footer">
                     {editable ? (
                       <>
-                        <Leaf size={14} /> Progress, at your own pace.
+                        <Leaf size={14} /> Focused work. Room to recharge.
                       </>
                     ) : (
                       <>
@@ -385,8 +385,8 @@ export function Daily({
         })}
       </div>
       <div className="quiet-note">
-        “Great things are done by a series of small things brought together.”
-        <span>One task, one page, one day.</span>
+        One honest hour beats another excuse.
+        <span>Focus fully. Rest properly. Come back tomorrow.</span>
       </div>
     </>
   );

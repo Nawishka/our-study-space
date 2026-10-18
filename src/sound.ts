@@ -4,13 +4,14 @@ export type FeedbackKind = "task" | "submission" | "plan" | "reward";
 export class GentleAudio {
   private context: AudioContext | null = null;
   private voices: OscillatorNode[] = [];
-  unlock() {
+  async unlock(): Promise<boolean> {
     try {
       this.context ??= new AudioContext();
-      if (this.context.state === "suspended")
-        void this.context.resume().catch(() => {});
+      if (this.context.state === "suspended") await this.context.resume();
+      return this.context?.state === "running";
     } catch {
       /* Audio unavailable: visual confirmation is always provided. */
+      return false;
     }
   }
   stop() {
@@ -25,7 +26,7 @@ export class GentleAudio {
   }
   play(kind: FeedbackKind) {
     const ctx = this.context;
-    if (!ctx || ctx.state !== "running") return;
+    if (!ctx || ctx.state !== "running") return false;
     this.stop();
     const notes = {
       task: [523.25, 659.25],
@@ -52,6 +53,7 @@ export class GentleAudio {
       oscillator.stop(start + 0.24);
       this.voices.push(oscillator);
     });
+    return true;
   }
   dispose() {
     this.stop();

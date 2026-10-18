@@ -3,6 +3,7 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { Brand } from "./ui";
 import { configured } from "./service";
 import { signInUsername } from "./authentication";
+import ThemeControl from "./ThemeControl";
 export default function Auth() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -31,13 +32,14 @@ export default function Auth() {
   return (
     <main className="auth-layout">
       <Brand />
+      <ThemeControl />
       <div className="auth-card card">
         <span className="auth-leaf">✦</span>
-        <div className="eyebrow">JUST THE TWO OF YOU, AND A LITTLE SUPPORT</div>
+        <div className="eyebrow">YOUR FUTURE STARTS HERE</div>
         <h1>Your space to grow.</h1>
         <p className="muted">
-          A calmer place to focus, celebrate the little wins, and work towards
-          something together.
+          Show up. Do the work. Build your future. Your shared study studio is
+          ready.
         </p>
         <form onSubmit={submit}>
           <label>
@@ -104,9 +106,7 @@ export default function Auth() {
           </p>
         )}
       </div>
-      <p className="auth-bottom">
-        A little effort. A shared dream. Our Study Space.
-      </p>
+      <p className="auth-bottom">Start before you feel ready.</p>
     </main>
   );
 }

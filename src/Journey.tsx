@@ -25,77 +25,7 @@ import { nextStep, previewScore, revisedRules, rulesError } from "./scoring";
 import { rpc } from "./service";
 import { useFeedback } from "./Feedback";
 import HostPoints from "./HostPoints";
-export function Character({ student }: { student: Student }) {
-  return (
-    <svg
-      viewBox="0 0 100 140"
-      role="img"
-      aria-label={NAMES[student] + " study companion"}
-    >
-      <ellipse cx="50" cy="132" rx="27" ry="5" fill="#454c3920" />
-      {student === "shashi" && (
-        <path d="M24 37Q18 7 50 6Q83 5 78 43L84 87H18Z" fill="#48403c" />
-      )}
-      <path
-        d="M35 104l-2 23m31-23 3 23"
-        stroke="#494544"
-        strokeWidth="11"
-        strokeLinecap="round"
-      />
-      <path
-        d="M31 128h-7m44 0h8"
-        stroke="#665d53"
-        strokeWidth="8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M25 77Q50 62 74 77L72 110H28Z"
-        fill={student === "melan" ? "#93bba7" : "#b9a7d8"}
-      />
-      <path
-        d="M27 80l-7 23m54-23 6 23"
-        stroke="#e9b998"
-        strokeWidth="9"
-        strokeLinecap="round"
-      />
-      <rect x="43" y="59" width="14" height="18" rx="6" fill="#e9b998" />
-      <ellipse cx="50" cy="40" rx="25" ry="28" fill="#f3c7a6" />
-      {student === "melan" ? (
-        <path
-          d="M25 37Q15 2 53 6Q81 6 78 38L69 26Q41 29 39 17L28 39Z"
-          fill="#49403a"
-        />
-      ) : (
-        <path
-          d="M24 33Q24 7 49 9Q76 7 77 35Q58 29 47 18Q39 29 24 33Z"
-          fill="#48403c"
-        />
-      )}
-      <path
-        d="M39 42v3m22-3v3"
-        stroke="#49403a"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <path
-        d="M45 54q5 5 10 0"
-        fill="none"
-        stroke="#ad6b61"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <ellipse cx="33" cy="51" rx="5" ry="3" fill="#e9978b" opacity=".5" />
-      <ellipse cx="66" cy="51" rx="5" ry="3" fill="#e9978b" opacity=".5" />
-      <path
-        d="M36 90l13 4 14-4v18l-14 4-13-4z"
-        fill="#fffbef"
-        stroke="#e0d8c9"
-      />
-      <path d="M49 94v18" stroke="#c9c6b6" />
-      {student === "shashi" && <path d="M69 23l8-6 3 10-9 2Z" fill="#b9a7d8" />}
-    </svg>
-  );
-}
+import Character from "./Character";
 function HostSettings({
   data,
   mutate,
@@ -373,9 +303,9 @@ export default function Journey({
   return (
     <>
       <PageHeading
-        eyebrow="BETTER, TOGETHER"
-        title="A shared dream. Two little steps."
-        description="Keep showing up for yourselves. There’s something lovely waiting along the way."
+        eyebrow="OUR JOURNEY / KEEP SHOWING UP"
+        title="Build the future. Together."
+        description="Your next honest effort matters. Let the progress speak."
         aside={
           <span className="pill">
             <Flower2 size={15} />
@@ -424,7 +354,7 @@ export default function Journey({
       )}
       <section className="journey-scene card">
         <div className="eyebrow">THE MOVIE DATE CHALLENGE</div>
-        <h2>Little by little, closer together.</h2>
+        <h2>Do the work. Earn the night.</h2>
         <p className="muted tiny">
           Two individual journeys. One well-earned evening.
         </p>
@@ -433,7 +363,7 @@ export default function Journey({
           <div className="movie-center">
             <Clapperboard size={30} />
             <span>MOVIE NIGHT</span>
-            <span className="tiny">our little reward</span>
+            <span className="tiny">well earned</span>
           </div>
           {STUDENTS.map((s) => {
             const score = data.scores.students?.[s]?.score ?? 0;
@@ -738,7 +668,7 @@ export default function Journey({
         <div className="section-heading">
           <div>
             <div className="eyebrow">MOMENTS WORTH KEEPING</div>
-            <h2>Our little collection of wins.</h2>
+            <h2>Proof you showed up.</h2>
           </div>
           <Clapperboard size={24} />
         </div>

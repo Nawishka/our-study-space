@@ -447,7 +447,7 @@ function AcademicStudent({
       <div className="card-header">
         <Identity
           student={student}
-          subtitle="Small improvements. Lasting confidence."
+          subtitle="Practice. Review. Repeat."
         />
         {profile.id === owner.id && (
           <button
@@ -521,28 +521,37 @@ function AcademicStudent({
                 data={graph}
                 margin={{ top: 15, right: 15, bottom: 5, left: -20 }}
               >
-                <CartesianGrid vertical={false} stroke="#eeefeb" />
+                <CartesianGrid vertical={false} stroke="var(--line)" />
                 <XAxis
                   dataKey="label"
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 12, fill: "var(--muted)" }}
                 />
                 <YAxis
                   domain={[0, 100]}
                   tickLine={false}
                   axisLine={false}
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 12, fill: "var(--muted)" }}
                 />
                 <Tooltip
+                  contentStyle={{
+                    background: "var(--surface)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 14,
+                    color: "var(--text)",
+                    boxShadow: "var(--shadow)",
+                  }}
+                  labelStyle={{ color: "var(--text)" }}
+                  itemStyle={{ color: "var(--ink)" }}
                   formatter={(value) => [`${value}%`, "Normalized mark"]}
                 />
                 <Line
                   type="monotone"
                   dataKey="percentage"
-                  stroke={student === "melan" ? "#52866e" : "#8b73ad"}
+                  stroke="var(--ink)"
                   strokeWidth={2.5}
-                  dot={{ r: 4, fill: "white", strokeWidth: 2 }}
+                  dot={{ r: 4, fill: "var(--surface)", strokeWidth: 2 }}
                   isAnimationActive={false}
                 />
               </LineChart>
@@ -736,7 +745,7 @@ function Planner({
         ))}
       </ul>
       {!tasks.length && (
-        <p className="tiny muted">A little intention for a new day.</p>
+        <p className="tiny muted">Give tomorrow a clear starting point.</p>
       )}
       {editable && (
         <form onSubmit={submit}>
@@ -796,8 +805,8 @@ export default function Academic({
     <>
       <PageHeading
         eyebrow="LEARN. REFLECT. GROW."
-        title="Every effort adds up."
-        description="Your papers, your progress, and a little perspective on how far you’ve come."
+        title="Practice with purpose."
+        description="Take the paper. Find the gaps. Come back stronger."
       />
       <div className="student-grid academic-grid">
         {STUDENTS.map((s) => (
@@ -841,7 +850,7 @@ export default function Academic({
       <section className="card planning-card">
         <div className="section-heading">
           <div>
-            <div className="eyebrow">A LITTLE INTENTION</div>
+            <div className="eyebrow">SET YOUR NEXT MOVE</div>
             <h2>Make space for tomorrow.</h2>
             <p className="muted tiny">
               Future plans become today’s focus, right on time.
@@ -863,7 +872,7 @@ export default function Academic({
       </section>
       <a className="journey-cta" href="#/journey">
         <span>
-          <span className="eyebrow">YOU’RE BUILDING SOMETHING TOGETHER</span>
+          <span className="eyebrow">EARN THE EVENING</span>
           <strong>See where your journey is taking you.</strong>
         </span>
         <ArrowRight size={24} />

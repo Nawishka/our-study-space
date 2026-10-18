@@ -1,5 +1,7 @@
 # Our Study Space
 
+**Appearance and audio update:** [Studio themes and verification](docs/UI-REVIEW.md). Warm cream light mode, full dark mode, aligned notifications and original study companions. Turn **Sounds on**, then choose **Test sound** to check device playback. No new migration or account setup is required for this visual/audio update.
+
 **Latest update:** [Notifications, missed-task deductions and Host points](docs/NOTIFICATIONS-AND-POINTS-UPDATE.md). This existing database needs only `202610170005_notifications_and_points.sql`; migration 004 is already applied. New-challenge defaults are 70 task / 25 practice / 5 performance.
 
 **For this existing installation, follow [START-HERE.md](START-HERE.md).** Existing Supabase public configuration and the GitHub repository are already connected. Fresh-install instructions below are reference only.

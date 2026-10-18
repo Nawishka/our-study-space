@@ -9,6 +9,7 @@ import {
 import Auth from "./Auth";
 import { FeedbackControls } from "./Feedback";
 import Notifications from "./Notifications";
+import ThemeControl from "./ThemeControl";
 const Academic = lazy(() => import("./Academic"));
 const Journey = lazy(() => import("./Journey"));
 import { Brand, Clock, Daily } from "./ui";
@@ -198,7 +199,10 @@ export default function App() {
           {study.status}
         </span>
       </div>
-      <FeedbackControls />
+      <div className="preference-row">
+        <ThemeControl />
+        <FeedbackControls />
+      </div>
       <main id="main-content" className="main-content">
         {study.data && (
           <Notifications
@@ -268,7 +272,7 @@ export default function App() {
         </Suspense>
       </main>
       <footer className="site-footer">
-        <span>Made for a shared dream.</span>
+        <span>Focus today. Build tomorrow.</span>
         <span>
           Melan <Heart size={11} /> Shashi
         </span>

@@ -76,6 +76,8 @@ beforeEach(() => {
   vi.stubGlobal("crypto", webcrypto);
   mocks.loadData.mockResolvedValue(demoData());
   mocks.rpc.mockResolvedValue(undefined);
+  mocks.unlock.mockResolvedValue(true);
+  mocks.play.mockReturnValue(true);
   Object.defineProperty(navigator, "onLine", {
     value: true,
     configurable: true,
@@ -88,6 +90,58 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     }),
   );
+});
+
+it("offers an explicit sound sample without creating a saved-action confirmation", async () => {
+  render(
+    <Wrapper>
+      <ConfirmButton />
+    </Wrapper>,
+  );
+  expect(
+    screen.queryByRole("button", { name: "Test sound" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Sounds off" }));
+  expect(mocks.play).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Test sound" }));
+  await screen.findByText("Sound sample played.");
+  expect(mocks.play).toHaveBeenCalledExactlyOnceWith("task");
+  expect(localStorage.getItem("study-confirmed-feedback-v1")).toBeNull();
+});
+
+it("does not play a delayed sample after sounds have been turned off", async () => {
+  render(
+    <Wrapper>
+      <ConfirmButton />
+    </Wrapper>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Sounds off" }));
+  let resume!: (ready: boolean) => void;
+  mocks.unlock.mockImplementationOnce(
+    () =>
+      new Promise<boolean>((resolve) => {
+        resume = resolve;
+      }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Test sound" }));
+  fireEvent.click(screen.getByRole("button", { name: "Sounds on" }));
+  await act(async () => {
+    resume(true);
+  });
+  expect(mocks.play).not.toHaveBeenCalled();
+});
+
+it("reports unavailable audio without pretending the sample played", async () => {
+  render(
+    <Wrapper>
+      <ConfirmButton />
+    </Wrapper>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Sounds off" }));
+  mocks.unlock.mockResolvedValueOnce(false);
+  fireEvent.click(screen.getByRole("button", { name: "Test sound" }));
+  await screen.findByText(/Audio unavailable/);
+  expect(mocks.play).not.toHaveBeenCalled();
 });
 
 it("keeps sound off for an ordinary confirmed action until the user enables it", () => {

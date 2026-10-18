@@ -38,6 +38,7 @@ interface Feedback {
   reduced: boolean;
   setSounds: (value: boolean) => void;
   setAnimations: (value: boolean) => void;
+  testSound: () => Promise<boolean>;
   confirm: (key: string, kind: FeedbackKind, message: string) => boolean;
 }
 const Context = createContext<Feedback>({
@@ -46,6 +47,7 @@ const Context = createContext<Feedback>({
   reduced: false,
   setSounds: () => {},
   setAnimations: () => {},
+  testSound: async () => false,
   confirm: () => false,
 });
 export const useFeedback = () => useContext(Context);
@@ -86,7 +88,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // A remembered preference never starts/resumes audio until a fresh gesture.
     const gesture = () => {
-      if (prefsRef.current.sounds) audio.current.unlock();
+      if (prefsRef.current.sounds) void audio.current.unlock();
     };
     window.addEventListener("pointerdown", gesture);
     window.addEventListener("keydown", gesture);
@@ -125,10 +127,20 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
         ...prefs,
         reduced,
         confirm,
+        testSound: async () => {
+          if (!prefsRef.current.sounds) return false;
+          const ready = await audio.current.unlock();
+          if (!ready || !prefsRef.current.sounds) return false;
+          try {
+            return audio.current.play("task");
+          } catch {
+            return false;
+          }
+        },
         setSounds: (sounds) => {
           prefsRef.current = { ...prefsRef.current, sounds };
           setPrefs(prefsRef.current);
-          if (sounds) audio.current.unlock();
+          if (sounds) void audio.current.unlock();
           else audio.current.stop();
         },
         setAnimations: (animations) =>
@@ -168,6 +180,8 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
 export function FeedbackControls() {
   const f = useFeedback();
+  const [testing, setTesting] = useState(false);
+  const [sample, setSample] = useState("");
   return (
     <div className="feedback-controls" aria-label="Feedback preferences">
       <button
@@ -178,6 +192,24 @@ export function FeedbackControls() {
         {f.sounds ? <Volume2 size={16} /> : <VolumeX size={16} />} Sounds{" "}
         {f.sounds ? "on" : "off"}
       </button>
+      {f.sounds && (
+        <button
+          className="text-button"
+          disabled={testing}
+          onClick={async () => {
+            setTesting(true);
+            const played = await f.testSound();
+            setSample(
+              played
+                ? "Sound sample played."
+                : "Audio unavailable. Check your browser and device sound settings.",
+            );
+            setTesting(false);
+          }}
+        >
+          Test sound
+        </button>
+      )}
       <button
         className="text-button"
         aria-pressed={f.animations}
@@ -187,6 +219,11 @@ export function FeedbackControls() {
       </button>
       {f.reduced && (
         <span className="tiny muted">Device reduced motion is active</span>
+      )}
+      {f.sounds && sample && (
+        <span className="tiny muted" role="status">
+          {sample}
+        </span>
       )}
     </div>
   );

@@ -62,3 +62,41 @@ it("silently falls back when the browser does not provide audio", () => {
     sound.dispose();
   }).not.toThrow();
 });
+
+it("waits for browser audio resume before reporting readiness", async () => {
+  let resume!: () => void;
+  const context = {
+    state: "suspended",
+    resume: () =>
+      new Promise<void>((resolve) => {
+        resume = () => {
+          context.state = "running";
+          resolve();
+        };
+      }),
+  };
+  vi.stubGlobal(
+    "AudioContext",
+    vi.fn(function () {
+      return context;
+    }),
+  );
+  const sound = new GentleAudio();
+  const ready = sound.unlock();
+  expect(sound.play("task")).toBe(false);
+  resume();
+  await expect(ready).resolves.toBe(true);
+});
+
+it("handles a rejected browser resume without an unhandled rejection", async () => {
+  vi.stubGlobal(
+    "AudioContext",
+    vi.fn(function () {
+      return {
+        state: "suspended",
+        resume: () => Promise.reject(new Error("Blocked")),
+      };
+    }),
+  );
+  await expect(new GentleAudio().unlock()).resolves.toBe(false);
+});
